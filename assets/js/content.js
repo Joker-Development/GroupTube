@@ -3,180 +3,192 @@ var socket = io('http://localhost:3000');
 var session_token;
 
 /**
- * Hover Events
+ * If Socket has successfully connected, continue with code
  */
-$(document).on('mouseover', '#grouptube-session-start', function (e) {
-    var tooltip = $('#grouptube-tooltip');
-    var offsetLeft = $(this).position().left - $('video').offset().left + $(this).width();
-    tooltip.css('left', offsetLeft);
-    tooltip.show();
-});
-
-$(document).on('mouseleave', '#grouptube-session-start', function () {
-    $('#grouptube-tooltip').hide();
-});
-
-/**
- * Click Events
- */
-$(document).on('click', '#grouptube-session-start', function () {
-    $('#grouptube-tooltip').hide();
-    socket.emit('create_session', function (data) {
-        if(data.success){
-            session_token = data.token;
-            var url = window.location.href;
-            url = addParametertoURL(url, 'grouptube_token', data.token);
-            url = removeParameterFromURL(url, 'list');
-            url = removeParameterFromURL(url, 'index');
-            navigator.clipboard.writeText(url).then(() => {
-                setVideoText("Video URL has been copied to Clipboard. Send it to your friends 🙂");
-            }, () => {
-                prompt("Send this URL to your friends:", url);
-            });
-
-            $('#grouptube-session-start').attr('disabled', 'disabled');
-
-            /**
-             * Play/Pause click on video
-             */
-            $(document).on('click', 'video', function () {
-                if($('video')[0].paused){
-                    socket.emit('video_play_server', session_token, function (data) {
-                        if(!data.success){
-                            throwConsoleError(data.error);
-                        }
-                    });
-                }else{
-                    socket.emit('video_pause_server', session_token, function (data) {
-                        if(!data.success){
-                            throwConsoleError(data.error);
-                        }
-                    });
-                }
-            });
-
-            /**
-             * Play/Pause click on button
-             */
-            $(document).on('click', '.ytp-play-button.ytp-button', function () {
-                if($('video')[0].paused){
-                    socket.emit('video_pause_server', session_token, function (data) {
-                        if(!data.success){
-                            throwConsoleError(data.error);
-                        }
-                    });
-                }else{
-                    socket.emit('video_play_server', session_token, function (data) {
-                        if(!data.success){
-                            throwConsoleError(data.error);
-                        }
-                    });
-                }
-            });
-
-            $('video').on('seeked', function() {
-                socket.emit('video_set_time_server', session_token, getVideoTime(), function (data) {
-                    if(!data.success){
-                        throwConsoleError(data.error);
-                    }
-                });
-            });
-
-            socket.on('get_video_properties',function(callback){
-                var data = {
-                    'isPlaying': isVideoPlaying(),
-                    'time': getVideoTime()
-                };
-                callback(data);
-            });
-
-            socket.on('update_session',function(data){
-                if(isVariableFromType(data.viewer_count, 'number')){
-                    updateViewCounter(data.viewer_count);
-                }else{
-                    throwConsoleError("Invalid Data!");
-                }
-            });
-
-            socket.on('disconnect',function(data){
-                setPlayVideo(false);
-                showOverlayWithText('Connection to GroupTube Server lost!<br><span style="font-size: 15px;">This may be due to connection issues or the server getting updated.</span>');
-            });
-
-            createViewCounter();
-        }else{
-            throwConsoleError(data.error);
-        }
+socket.on('connect', () => {
+    /**
+     * Hover Events
+     */
+    $(document).on('mouseover', '#grouptube-session-start', function (e) {
+        var tooltip = $('#grouptube-tooltip');
+        var offsetLeft = ($(this).position().left+($('.ytp-gradient-bottom').outerWidth() - $('.ytp-chrome-bottom').outerWidth())/2) + ($(this).outerWidth()/2) - (tooltip.outerWidth() / 2);
+        tooltip.css('left', offsetLeft);
+        tooltip.show();
     });
-});
 
-
-if(getUrlParameter('grouptube_token')){
-    var token = getUrlParameter('grouptube_token');
+    $(document).on('mouseleave', '#grouptube-session-start', function () {
+        $('#grouptube-tooltip').hide();
+    });
 
     /**
-     * Join room with token
+     * Click Events
      */
-    socket.emit('join_room_by_token', token, function(data) {
-        if (data.success) {
-            setPlayVideo(false);
-            setVideoTime(0);
-            disableControls();
-            createViewCounter();
-
-            /**
-             * Toggle video play
-             */
-            socket.on('video_toggle_play',function(status){
-                setPlayVideo(status);
-            });
-
-            /**
-             * Set the current time of the video
-             */
-            socket.on('video_set_time_client',function(time){
-                setVideoTime(time);
-            });
-
-            socket.on('set_video_properties',function(data){
-                setVideoTime(data.time);
-                setPlayVideo(data.isPlaying);
-            });
-
-            socket.on('update_session',function(data){
-                if(isVariableFromType(data.viewer_count, 'number')){
-                    updateViewCounter(data.viewer_count);
-                }else{
-                    throwConsoleError("Invalid Data!");
-                }
-            });
-
-            socket.on('video_close_session',function(){
-                setPlayVideo(false);
-                // var url = window.location.href.split("&grouptube_token=")[0] + "&t=" + ((Math.round(getVideoTime()) - 1) >= 0 ? (Math.round(getVideoTime()) - 1): 0);
-
+    $(document).on('click', '#grouptube-session-start', function () {
+        $('#grouptube-tooltip').hide();
+        socket.emit('create_session', function (data) {
+            if(data.success){
+                session_token = data.token;
                 var url = window.location.href;
-                url = removeParameterFromURL(url, 'grouptube_token');
-                url = addParametertoURL(url, 't', ((Math.round(getVideoTime()) - 1) >= 0 ? (Math.round(getVideoTime()) - 1): 0));
+                url = addParametertoURL(url, 'grouptube_token', data.token);
+                url = removeParameterFromURL(url, 'list');
+                url = removeParameterFromURL(url, 'index');
+                navigator.clipboard.writeText(url).then(() => {
+                    setVideoText("Video URL has been copied to Clipboard. Send it to your friends 🙂");
+                }, () => {
+                    prompt("Send this URL to your friends:", url);
+                });
 
+                $('#grouptube-session-start').attr('disabled', 'disabled');
+                updateViewCounter(1);
 
-                showOverlayWithText("GroupTube Session Owner closed the video!", url);
+                /**
+                 * Play/Pause click on video
+                 */
+                $(document).on('click', 'video', function () {
+                    if($('video')[0].paused){
+                        socket.emit('video_play_server', session_token, function (data) {
+                            if(!data.success){
+                                throwConsoleError(data.error);
+                            }
+                        });
+                    }else{
+                        socket.emit('video_pause_server', session_token, function (data) {
+                            if(!data.success){
+                                throwConsoleError(data.error);
+                            }
+                        });
+                    }
+                });
+
+                /**
+                 * Play/Pause click on button
+                 */
+                $(document).on('click', '.ytp-play-button.ytp-button', function () {
+                    if($('video')[0].paused){
+                        socket.emit('video_pause_server', session_token, function (data) {
+                            if(!data.success){
+                                throwConsoleError(data.error);
+                            }
+                        });
+                    }else{
+                        socket.emit('video_play_server', session_token, function (data) {
+                            if(!data.success){
+                                throwConsoleError(data.error);
+                            }
+                        });
+                    }
+                });
+
+                $('video').on('seeked', function() {
+                    socket.emit('video_set_time_server', session_token, getVideoTime(), function (data) {
+                        if(!data.success){
+                            throwConsoleError(data.error);
+                        }
+                    });
+                });
+
+                socket.on('get_video_properties',function(callback){
+                    var data = {
+                        'isPlaying': isVideoPlaying(),
+                        'time': getVideoTime()
+                    };
+                    callback(data);
+                });
+
+                socket.on('update_session',function(data){
+                    if(isVariableFromType(data.viewer_count, 'number')){
+                        updateViewCounter(data.viewer_count);
+                    }else{
+                        throwConsoleError("Invalid Data!");
+                    }
+                });
+
+                socket.on('disconnect',function(data){
+                    setPlayVideo(false);
+                    showOverlayWithText('Connection to GroupTube Server lost!<br><span style="font-size: 15px;">This may be due to connection issues or the server getting updated.</span>');
+                });
+
+                createViewCounter();
+            }else{
+                throwConsoleError(data.error);
+            }
+
+            $('video').bind("DOMSubtreeModified",function(){
+                alert("aasdasd");
             });
-
-            socket.on('disconnect',function(data){
-                setPlayVideo(false);
-                showOverlayWithText('Connection to GroupTube Server lost!<br><span style="font-size: 15px;">This may be due to connection issues or the server getting updated.</span>');
-            });
-        }else{
-            throwConsoleError(data.error);
-        }
+        });
     });
-}else{
-    if(!isLiveStream()){
-        $('.ytp-right-controls').prepend(getButtonHtml());
-        $('#movie_player').append(getTooltipHtml());
+
+
+
+
+    if(getUrlParameter('grouptube_token')){
+        var token = getUrlParameter('grouptube_token');
+
+        /**
+         * Join room with token
+         */
+        socket.emit('join_room_by_token', token, function(data) {
+            if (data.success) {
+                setPlayVideo(false);
+                setVideoTime(0);
+                disableControls();
+                createViewCounter();
+
+                /**
+                 * Toggle video play
+                 */
+                socket.on('video_toggle_play',function(status){
+                    setPlayVideo(status);
+                });
+
+                /**
+                 * Set the current time of the video
+                 */
+                socket.on('video_set_time_client',function(time){
+                    setVideoTime(time);
+                });
+
+                socket.on('set_video_properties',function(data){
+                    setVideoTime(data.time);
+                    setPlayVideo(data.isPlaying);
+                });
+
+                socket.on('update_session',function(data){
+                    if(isVariableFromType(data.viewer_count, 'number')){
+                        updateViewCounter(data.viewer_count);
+                    }else{
+                        throwConsoleError("Invalid Data!");
+                    }
+                });
+
+                socket.on('video_close_session',function(){
+                    setPlayVideo(false);
+                    var url = window.location.href;
+                    url = removeParameterFromURL(url, 'grouptube_token');
+                    url = removeParameterFromURL(url, 't');
+                    url = addParametertoURL(url, 't', ((Math.round(getVideoTime()) - 1) >= 0 ? (Math.round(getVideoTime()) - 1): 0));
+                    showOverlayWithText("GroupTube Session Owner closed the video!", url);
+                    updateViewCounter("");
+                });
+
+                socket.on('disconnect',function(data){
+                    updateViewCounter("");
+                    setPlayVideo(false);
+                    showOverlayWithText('Connection to GroupTube Server lost!<br><span style="font-size: 15px;">This may be due to connection issues or the server getting updated.</span>');
+                });
+            }else{
+                throwConsoleError(data.error);
+            }
+        });
+    }else{
+        if(!isLiveStream()){
+            $('.ytp-right-controls').prepend(getButtonHtml());
+            $('#movie_player').append(getTooltipHtml());
+        }
     }
-}
+});
+updateViewCounter("");
 
 function getUrlParameter(name) {
     name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
@@ -284,6 +296,7 @@ function showOverlayWithText(text, url = ""){
 
 function updateViewCounter(count) {
     $('#grouptube-viewcounter span').text(count);
+    chrome.runtime.sendMessage({setBadgeText: count});
 }
 
 function isVariableFromType(variable, type) {

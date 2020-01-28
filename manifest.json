@@ -5,9 +5,10 @@
     "description": "Watch YouTube videos together, completely in sync and easy to manage.",
     "author": "Lasse Jacobsen & Mahmut Tunctuerk",
     "homepage_url": "https://grouptube.de/",
-    "minimum_chrome_version": "21",
-    "permissions": ["activeTab", "declarativeContent", "storage", "clipboardWrite"],
+    "minimum_chrome_version": "66",
+    "permissions": ["activeTab", "declarativeContent", "clipboardWrite"],
     "offline_enabled": false,
+    "browser_action": {},
     "background": {
         "scripts": ["assets/js/background.js"],
         "persistent": false

@@ -109,15 +109,8 @@ socket.on('connect', () => {
             }else{
                 throwConsoleError(data.error);
             }
-
-            $('video').bind("DOMSubtreeModified",function(){
-                alert("aasdasd");
-            });
         });
     });
-
-
-
 
     if(getUrlParameter('grouptube_token')){
         var token = getUrlParameter('grouptube_token');

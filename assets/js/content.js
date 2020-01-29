@@ -1,6 +1,15 @@
-// var socket = io('https://socket.lassejacobsen.de');
-var socket = io('http://localhost:3000');
+var debug = false;
 var session_token;
+var socket;
+
+/**
+ * Debug Mode
+ */
+if(debug){
+    socket = io('http://localhost:3000');
+}else{
+    socket = io('https://socket.grouptube.de');
+}
 
 /**
  * If Socket has successfully connected, continue with code
@@ -40,46 +49,34 @@ socket.on('connect', () => {
 
                 $('#grouptube-session-start').attr('disabled', 'disabled');
                 updateViewCounter(1);
+                createPageOverlay();
+                removeRecommendationWrapper();
+                disableAfterLoad();
 
                 /**
-                 * Play/Pause click on video
-                 */
-                $(document).on('click', 'video', function () {
-                    if($('video')[0].paused){
-                        socket.emit('video_play_server', session_token, function (data) {
-                            if(!data.success){
-                                throwConsoleError(data.error);
-                            }
-                        });
-                    }else{
-                        socket.emit('video_pause_server', session_token, function (data) {
-                            if(!data.success){
-                                throwConsoleError(data.error);
-                            }
-                        });
-                    }
+                 * On video play
+                */
+                var video = $('video');
+                video.on('play', function (e) {
+                    socket.emit('video_play_server', session_token, getVideoTime(), function (data) {
+                        if(!data.success){
+                            throwConsoleError(data.error);
+                        }
+                    });
                 });
 
                 /**
-                 * Play/Pause click on button
+                 * On video pause
                  */
-                $(document).on('click', '.ytp-play-button.ytp-button', function () {
-                    if($('video')[0].paused){
-                        socket.emit('video_pause_server', session_token, function (data) {
-                            if(!data.success){
-                                throwConsoleError(data.error);
-                            }
-                        });
-                    }else{
-                        socket.emit('video_play_server', session_token, function (data) {
-                            if(!data.success){
-                                throwConsoleError(data.error);
-                            }
-                        });
-                    }
+                video.on('pause', function (e) {
+                    socket.emit('video_pause_server', session_token, getVideoTime(), function (data) {
+                        if(!data.success){
+                            throwConsoleError(data.error);
+                        }
+                    });
                 });
 
-                $('video').on('seeked', function() {
+                video.on('seeked', function() {
                     socket.emit('video_set_time_server', session_token, getVideoTime(), function (data) {
                         if(!data.success){
                             throwConsoleError(data.error);
@@ -105,7 +102,7 @@ socket.on('connect', () => {
 
                 socket.on('disconnect',function(data){
                     setPlayVideo(false);
-                    showOverlayWithText('Connection to GroupTube Server lost!<br><span style="font-size: 15px;">This may be due to connection issues or the server getting updated.</span>');
+                    showVideoOverlayWithText('Connection to GroupTube Server lost!<br><span style="font-size: 15px;">This may be due to connection issues or the server getting updated.</span>');
                 });
 
                 createViewCounter();
@@ -134,12 +131,16 @@ socket.on('connect', () => {
                 setVideoTime(0);
                 disableControls();
                 createViewCounter();
+                createPageOverlay();
+                removeRecommendationWrapper();
+                disableAfterLoad();
 
                 /**
                  * Toggle video play
                  */
-                socket.on('video_toggle_play',function(status){
+                socket.on('video_toggle_play',function(status, time){
                     setPlayVideo(status);
+                    setVideoTime(time);
                 });
 
                 /**
@@ -168,15 +169,22 @@ socket.on('connect', () => {
                     url = removeParameterFromURL(url, 'grouptube_token');
                     url = removeParameterFromURL(url, 't');
                     url = addParametertoURL(url, 't', ((Math.round(getVideoTime()) - 1) >= 0 ? (Math.round(getVideoTime()) - 1): 0));
-                    showOverlayWithText("GroupTube Session Owner closed the video!", url);
+                    showVideoOverlayWithText("GroupTube Session Owner closed the video!", url);
                     updateViewCounter("");
                 });
 
                 socket.on('disconnect',function(data){
                     updateViewCounter("");
                     setPlayVideo(false);
-                    showOverlayWithText('Connection to GroupTube Server lost!<br><span style="font-size: 15px;">This may be due to connection issues or the server getting updated.</span>');
+                    showVideoOverlayWithText('Connection to GroupTube Server lost!<br><span style="font-size: 15px;">This may be due to connection issues or the server getting updated.</span>');
                 });
+
+                /**
+                 * Disable all keyboard keys
+                 */
+                $('body').on('keydown', function (e) {
+                    return false;
+                })
             }else{
                 throwConsoleError(data.error);
             }
@@ -236,24 +244,14 @@ function getVideoTime() {
 }
 
 function disableControls() {
-    $('.ytp-play-button.ytp-button, .ytp-next-button.ytp-button, .ytp-miniplayer-button.ytp-button').attr('disabled', 'disabled').css('pointer-events', 'none').css('opacity', '0.2');
+    $('.ytp-play-button.ytp-button, .ytp-next-button.ytp-button, .ytp-miniplayer-button.ytp-button, .ytp-right-controls>[class=ytp-button]').attr('disabled', 'disabled').css('pointer-events', 'none').css('opacity', '0.2');
     $('#movie_player, video, .ytp-progress-bar-container').css('pointer-events', 'none');
+    $('.ytp-chrome-controls').css('pointer-events', 'all');
     $('.ytp-left-controls').append(`
     <div class="ytp-time-display notranslate">
         <button style="display: block; text-transform: unset;" disabled="true" class="ytp-live-badge ytp-button">Video is controlled by GroupTube Session Owner</button>
     </div>
     `);
-    // var video = $('video');
-    // video.on('play', function (e) {
-    //     $('video')[0].pause();
-    //     e.stopPropagation();
-    //     e.stopImmediatePropagation();
-    // });
-    // video.on('pause', function (e) {
-    //     $('video')[0].play();
-    //     e.stopPropagation();
-    //     e.stopImmediatePropagation();
-    // });
 }
 
 function setVideoText(text){
@@ -279,11 +277,11 @@ function createViewCounter() {
     `);
 }
 
-function showOverlayWithText(text, url = ""){
+function showVideoOverlayWithText(text, url = ""){
     var linkElement = url ? '<a href="'+url+'" style="color: rgb(62, 166, 255);">Want to continue watching?</a>🍿' : "";
-    $('#grouptube-overlay').remove();
+    $('#grouptube-video-overlay').remove();
     $('#player-container-outer').prepend(`
-        <div id="grouptube-overlay" style="position: absolute; top: 0;left: 0;width: 100%;height: 100%;background-color: rgba(0, 0, 0, 0.8);z-index: 100;color: #fff;">
+        <div id="grouptube-video-overlay" style="position: absolute; top: 0;left: 0;width: 100%;height: 100%;background-color: rgba(0, 0, 0, 0.8);z-index: 2000000;color: #fff;">
             <h1 style="position: absolute;top: 50%;left: 50%;transform: translate(-50%, -50%);text-align: center;">
                 `+text+`
                 <div>
@@ -292,6 +290,30 @@ function showOverlayWithText(text, url = ""){
             </h1>
         </div>
     `);
+}
+
+function createPageOverlay() {
+    $('body').prepend('<div class="grouptube-overlay" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:100000;background-color:rgba(0,0,0,0.8)"></div>');
+    $('#player-container').css('z-index','1000000');
+}
+
+function removeRecommendationWrapper(){
+    $('.ytp-ce-element').remove();
+}
+
+function uncheck(toggle) {
+    if (toggle.hasAttribute('checked')) {
+        toggle.click();
+    }
+}
+
+function disableAfterLoad() {
+    var autoplayToggle = document.getElementById('toggle');
+    if (autoplayToggle) {
+        uncheck(autoplayToggle);
+    } else {
+        setTimeout(disableAfterLoad, 500);
+    }
 }
 
 function updateViewCounter(count) {
@@ -304,7 +326,9 @@ function isVariableFromType(variable, type) {
 }
 
 function throwConsoleError(error){
-    console.error("[GroupTube] Error: " + error);
+    if(debug){
+        console.error("[GroupTube] Error: " + error);
+    }
 }
 
 function isLiveStream(){
@@ -328,35 +352,3 @@ function addParametertoURL(url, parameter, value){
     url_old.search = search_params.toString();
     return url_old.toString();
 }
-
-// function getMenuCss(){
-//     return `
-//         <style>
-//             .grouptube-menu {
-//                 margin-top: 20px;
-//                 padding: 0 20px;
-//             }
-//
-//             .grouptube-content {
-//                 color: white;
-//                 padding: 10px 0;
-//             }
-//
-//             .grouptube-btn {
-//                 display: inline-block;
-//                 text-align: center;
-//                 cursor: pointer;
-//                 margin-right: 5px;
-//             }
-//
-//             .grouptube-btn svg {
-//                 width: 45px;
-//             }
-//         </style>
-//     `;
-// }
-
-// function isYTShareBtn(element){
-//     var shareSVGPath = "M11.7333 8.26667V4L19.2 11.4667L11.7333 18.9333V14.56C6.4 14.56 2.66667 16.2667 0 20C1.06667 14.6667 4.26667 9.33333 11.7333 8.26667Z";
-//     return element.find('path').attr('d') === shareSVGPath;
-// }

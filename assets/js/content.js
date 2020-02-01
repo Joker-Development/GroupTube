@@ -16,7 +16,7 @@ if(debug){
  */
 socket.on('connect', () => {
     /**
-     * Hover Events
+     * Hover & Click Events
      */
     $(document).on('mouseover', '#grouptube-session-start', function (e) {
         var tooltip = $('#grouptube-tooltip');
@@ -27,6 +27,19 @@ socket.on('connect', () => {
 
     $(document).on('mouseleave', '#grouptube-session-start', function () {
         $('#grouptube-tooltip').hide();
+    });
+
+    $(document).on('click', '.ytp-fullscreen-button', function () {
+        var tooltip = $('#grouptube-tooltip');
+        if(tooltip.css('bottom') === "50px"){
+            tooltip.css('bottom', "72px");
+            tooltip.css('padding-top', "8px");
+            tooltip.css('padding-bottom', "8px");
+        }else{
+            tooltip.css('bottom', "50px");
+            tooltip.css('padding-top', "5px");
+            tooltip.css('padding-bottom', "5px");
+        }
     });
 
     /**
@@ -210,7 +223,7 @@ function getButtonHtml(){
 
 function getTooltipHtml(){
     return `
-    <div id="grouptube-tooltip" style="display:none; position: absolute; max-width: 300px; top: 645px; left: 969px; z-index: 1002; background-color: rgba(28,28,28,0.9); border-radius: 2px; padding: 5px 9px;font-size: 118%; font-weight: 500; line-height: 15px;">
+    <div id="grouptube-tooltip" style="display:none; position: absolute; max-width: 300px; bottom: 50px; left: 969px; z-index: 1002; background-color: rgba(28,28,28,0.9); border-radius: 2px; padding: 5px 9px;font-size: 118%; font-weight: 500; line-height: 15px;">
         Create GroupTube Session
     </div>
     `;

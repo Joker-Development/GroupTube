@@ -1,0 +1,12 @@
+stages:
+    - test
+
+test:
+    stage: test
+    script:
+        - echo "Testing Code"
+        - test -f "assets/js/content.js"
+        - echo "Giving Permissions to shell script"
+        - chmod +x test_code.sh
+        - echo "Executing Shell Script"
+        - ./test_code.sh

@@ -8,7 +8,6 @@
     "minimum_chrome_version": "66",
     "permissions": ["activeTab", "declarativeContent", "clipboardWrite"],
     "offline_enabled": false,
-    "browser_action": {},
     "background": {
         "scripts": ["assets/js/background.js"],
         "persistent": false

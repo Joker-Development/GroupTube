@@ -1,4 +1,4 @@
-var debug = false;
+var debug = true;
 var session_token;
 var socket;
 
@@ -311,7 +311,6 @@ function disableAfterLoad() {
 
 function updateViewCounter(count) {
     $('#grouptube-viewcounter span').text(count);
-    chrome.runtime.sendMessage({setBadgeText: count});
 }
 
 function isVariableFromType(variable, type) {

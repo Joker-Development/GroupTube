@@ -14,13 +14,3 @@ chrome.runtime.onInstalled.addListener(function() {
         }]);
     });
 });
-
-
-chrome.runtime.onMessage.addListener(
-    function(request, sender, sendResponse) {
-        // if(request.setBadgeText && (typeof request.setBadgeText != "undefined")){
-            var count = request.setBadgeText.toString();
-            chrome.browserAction.setBadgeText({text: count});
-        // }
-    }
-);

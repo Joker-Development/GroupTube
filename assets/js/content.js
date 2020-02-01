@@ -1,4 +1,4 @@
-var debug = true;
+var debug = false;
 var session_token;
 var socket;
 
@@ -183,7 +183,7 @@ socket.on('connect', () => {
             }
         });
     }else{
-        if(!isLiveStream()){
+        if(!isLiveStream() && $('#grouptube-session-start').length === 0){
             $('.ytp-right-controls').prepend(getButtonHtml());
             $('#movie_player').append(getTooltipHtml());
         }

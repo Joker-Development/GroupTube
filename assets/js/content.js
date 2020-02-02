@@ -43,12 +43,15 @@ socket.on('connect', () => {
     });
 
     /**
-     * Click Events
+     * Click Event for starting a session
      */
     $(document).on('click', '#grouptube-session-start', function () {
         $('#grouptube-tooltip').hide();
         socket.emit('create_session', function (data) {
             if(data.success){
+                /**
+                 * Get token and build URL
+                 */
                 session_token = data.token;
                 var url = window.location.href;
                 url = addParametertoURL(url, 'grouptube_token', data.token);
@@ -60,6 +63,9 @@ socket.on('connect', () => {
                     prompt("Send this URL to your friends:", url);
                 });
 
+                /**
+                 * Build page
+                 */
                 $('#grouptube-session-start').attr('disabled', 'disabled');
                 updateViewCounter(1);
                 createPageOverlay();
@@ -67,7 +73,7 @@ socket.on('connect', () => {
                 disableAfterLoad();
 
                 /**
-                 * On video play
+                 * On video play, send to server
                 */
                 var video = $('video');
                 video.on('play', function (e) {
@@ -79,7 +85,7 @@ socket.on('connect', () => {
                 });
 
                 /**
-                 * On video pause
+                 * On video pause, send to server
                  */
                 video.on('pause', function (e) {
                     socket.emit('video_pause_server', session_token, getVideoTime(), function (data) {
@@ -89,6 +95,9 @@ socket.on('connect', () => {
                     });
                 });
 
+                /**
+                 * On video seeked, send to server
+                 */
                 video.on('seeked', function() {
                     socket.emit('video_set_time_server', session_token, getVideoTime(), function (data) {
                         if(!data.success){
@@ -97,6 +106,9 @@ socket.on('connect', () => {
                     });
                 });
 
+                /**
+                 * Get video playback information
+                 */
                 socket.on('get_video_properties',function(callback){
                     var data = {
                         'isPlaying': isVideoPlaying(),
@@ -105,6 +117,9 @@ socket.on('connect', () => {
                     callback(data);
                 });
 
+                /**
+                 * Update Session (View-count etc.)
+                 */
                 socket.on('update_session',function(data){
                     if(isVariableFromType(data.viewer_count, 'number')){
                         updateViewCounter(data.viewer_count);
@@ -113,11 +128,17 @@ socket.on('connect', () => {
                     }
                 });
 
+                /**
+                 * On disconnect display overlay
+                 */
                 socket.on('disconnect',function(data){
                     setPlayVideo(false);
                     showVideoOverlayWithText('Connection to GroupTube Server lost!<br><span style="font-size: 15px;">This may be due to connection issues or the server getting updated.</span>');
                 });
 
+                /**
+                 * Build view-counter
+                 */
                 createViewCounter();
             }else{
                 throwConsoleError(data.error);
@@ -125,6 +146,9 @@ socket.on('connect', () => {
         });
     });
 
+    /**
+     * If opened GroupTube video URL
+     */
     if(getUrlParameter('grouptube_token')){
         var token = getUrlParameter('grouptube_token');
 
@@ -133,6 +157,9 @@ socket.on('connect', () => {
          */
         socket.emit('join_room_by_token', token, function(data) {
             if (data.success) {
+                /**
+                 * Build Page
+                 */
                 setPlayVideo(false);
                 setVideoTime(0);
                 disableControls();
@@ -142,7 +169,7 @@ socket.on('connect', () => {
                 disableAfterLoad();
 
                 /**
-                 * Toggle video play
+                 * On Toggle video play
                  */
                 socket.on('video_toggle_play',function(status, time){
                     setPlayVideo(status);
@@ -156,11 +183,17 @@ socket.on('connect', () => {
                     setVideoTime(time);
                 });
 
+                /**
+                 * Set video playback information
+                 */
                 socket.on('set_video_properties',function(data){
                     setVideoTime(data.time);
                     setPlayVideo(data.isPlaying);
                 });
 
+                /**
+                 * Update session (View-count etc.)
+                 */
                 socket.on('update_session',function(data){
                     if(isVariableFromType(data.viewer_count, 'number')){
                         updateViewCounter(data.viewer_count);
@@ -169,6 +202,9 @@ socket.on('connect', () => {
                     }
                 });
 
+                /**
+                 * On Master session close, display overlay and generate URL to continue watching alone
+                 */
                 socket.on('video_close_session',function(){
                     setPlayVideo(false);
                     var url = window.location.href;
@@ -179,6 +215,9 @@ socket.on('connect', () => {
                     updateViewCounter("");
                 });
 
+                /**
+                 * On server disconnect, update view-count, pause video and show overlay
+                 */
                 socket.on('disconnect',function(data){
                     updateViewCounter("");
                     setPlayVideo(false);
@@ -196,6 +235,9 @@ socket.on('connect', () => {
             }
         });
     }else{
+        /**
+         * Display create session button
+         */
         if(!isLiveStream() && $('#grouptube-session-start').length === 0){
             $('.ytp-right-controls').prepend(getButtonHtml());
             $('#movie_player').append(getTooltipHtml());
@@ -204,6 +246,9 @@ socket.on('connect', () => {
 });
 updateViewCounter("");
 
+/**
+ * Get URL Parameter by name
+ */
 function getUrlParameter(name) {
     name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
     var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
@@ -211,6 +256,9 @@ function getUrlParameter(name) {
     return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
 }
 
+/**
+ * Get button html
+ */
 function getButtonHtml(){
     return `
     <button id="grouptube-session-start" class="ytp-subtitles-button ytp-button" aria-label="Start a GroupTube Session" style="text-align: center;" aria-pressed="false" title="Start a GroupTube Session">
@@ -221,6 +269,9 @@ function getButtonHtml(){
     `;
 }
 
+/**
+ * Get tooltip html
+ */
 function getTooltipHtml(){
     return `
     <div id="grouptube-tooltip" style="display:none; position: absolute; max-width: 300px; bottom: 50px; left: 969px; z-index: 1002; background-color: rgba(28,28,28,0.9); border-radius: 2px; padding: 5px 9px;font-size: 118%; font-weight: 500; line-height: 15px;">
@@ -229,6 +280,9 @@ function getTooltipHtml(){
     `;
 }
 
+/**
+ * Play/pause video
+ */
 function setPlayVideo(status){
     if(status){
         $('video')[0].play();
@@ -237,18 +291,30 @@ function setPlayVideo(status){
     }
 }
 
+/**
+ * Check if video is currently playing
+ */
 function isVideoPlaying() {
     return !$('video')[0].paused;
 }
 
+/**
+ * Set current video playtime
+ */
 function setVideoTime(time){
     $('video')[0].currentTime = time;
 }
 
+/**
+ * Get current video playtime
+ */
 function getVideoTime() {
     return $('video')[0].currentTime;
 }
 
+/**
+ * Disable video controls for client
+ */
 function disableControls() {
     $('.ytp-play-button.ytp-button, .ytp-next-button.ytp-button, .ytp-miniplayer-button.ytp-button, .ytp-right-controls>[class=ytp-button]').attr('disabled', 'disabled').css('pointer-events', 'none').css('opacity', '0.2');
     $('#movie_player, video, .ytp-progress-bar-container').css('pointer-events', 'none');
@@ -260,6 +326,9 @@ function disableControls() {
     `);
 }
 
+/**
+ * Set video text in control bar
+ */
 function setVideoText(text){
     var element = $(`
         <div class="ytp-time-display notranslate">
@@ -273,6 +342,9 @@ function setVideoText(text){
     }, 5000);
 }
 
+/**
+ * Create view counter
+ */
 function createViewCounter() {
     $('.ytp-right-controls').prepend(`
         <div id="grouptube-viewcounter" class="ytp-subtitles-button ytp-button" style="opacity: 1;">
@@ -283,6 +355,9 @@ function createViewCounter() {
     `);
 }
 
+/**
+ * Display video overlay with given text
+ */
 function showVideoOverlayWithText(text, url = ""){
     var linkElement = url ? '<a href="'+url+'" style="color: rgb(62, 166, 255);">Want to continue watching?</a>🍿' : "";
     $('#grouptube-video-overlay').remove();
@@ -298,21 +373,33 @@ function showVideoOverlayWithText(text, url = ""){
     `);
 }
 
+/**
+ * Create page overlay
+ */
 function createPageOverlay() {
     $('body').prepend('<div class="grouptube-overlay" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:100000;background-color:rgba(0,0,0,0.8)"></div>');
     $('#player-container').css('z-index','1000000');
 }
 
+/**
+ * Remove video recommendations
+ */
 function removeRecommendationWrapper(){
     $('.ytp-ce-element').remove();
 }
 
+/**
+ * Uncheck checkbox
+ */
 function uncheck(toggle) {
     if (toggle.hasAttribute('checked')) {
         toggle.click();
     }
 }
 
+/**
+ * Disable autoplay
+ */
 function disableAfterLoad() {
     var autoplayToggle = document.getElementById('toggle');
     if (autoplayToggle) {
@@ -322,24 +409,39 @@ function disableAfterLoad() {
     }
 }
 
+/**
+ * Update view counter
+ */
 function updateViewCounter(count) {
     $('#grouptube-viewcounter span').text(count);
 }
 
+/**
+ * Check if given variable has a given type
+ */
 function isVariableFromType(variable, type) {
     return typeof variable == type;
 }
 
+/**
+ * Display Error in web console
+ */
 function throwConsoleError(error){
     if(debug){
         console.error("[GroupTube] Error: " + error);
     }
 }
 
+/**
+ * Check if current video is a live stream
+ */
 function isLiveStream(){
     return $('.ytp-live').length !== 0;
 }
 
+/**
+ * Remove given parameter from given url
+ */
 function removeParameterFromURL(url, parameter){
     var url_old = new URL(url);
     var query_string = url_old.search;
@@ -349,6 +451,9 @@ function removeParameterFromURL(url, parameter){
     return url_old.toString();
 }
 
+/**
+ * Add given parameter to given URL
+ */
 function addParametertoURL(url, parameter, value){
     var url_old = new URL(url);
     var query_string = url_old.search;

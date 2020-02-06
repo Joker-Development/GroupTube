@@ -121,10 +121,14 @@ socket.on('connect', () => {
                  * Update Session (View-count etc.)
                  */
                 socket.on('update_session',function(data){
-                    if(isVariableFromType(data.viewer_count, 'number')){
-                        updateViewCounter(data.viewer_count);
+                    if(!isVariableFromType(data, 'undefined')){
+                        if(isVariableFromType(data.viewer_count, 'number')){
+                            updateViewCounter(data.viewer_count);
+                        }else{
+                            throwConsoleError("Invalid Data!");
+                        }
                     }else{
-                        throwConsoleError("Invalid Data!");
+                        updateViewCounter((parseInt($('#grouptube-viewcounter span').text()) - 1));
                     }
                 });
 
@@ -359,9 +363,11 @@ function createViewCounter() {
  * Display video overlay with given text
  */
 function showVideoOverlayWithText(text, url = ""){
+    if(isFullscreen()){
+        $('.ytp-fullscreen-button').click();
+    }
     var linkElement = url ? '<a href="'+url+'" style="color: rgb(62, 166, 255);">Want to continue watching?</a>🍿' : "";
-    $('#grouptube-video-overlay').remove();
-    $('#player-container-outer').prepend(`
+    var html = `
         <div id="grouptube-video-overlay" style="position: absolute; top: 0;left: 0;width: 100%;height: 100%;background-color: rgba(0, 0, 0, 0.8);z-index: 2000000;color: #fff;">
             <h1 style="position: absolute;top: 50%;left: 50%;transform: translate(-50%, -50%);text-align: center;">
                 `+text+`
@@ -370,13 +376,22 @@ function showVideoOverlayWithText(text, url = ""){
                 </div>
             </h1>
         </div>
-    `);
+    `;
+    $('#grouptube-video-overlay').remove();
+    if(isTheaterMode()){
+        $('#player-theater-container').prepend(html);
+    }else{
+        $('#player-container-outer').prepend(html);
+    }
 }
 
 /**
  * Create page overlay
  */
 function createPageOverlay() {
+    if(isFullscreen()){
+        $('.ytp-fullscreen-button').click();
+    }
     $('body').prepend('<div class="grouptube-overlay" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:100000;background-color:rgba(0,0,0,0.8)"></div>');
     $('#player-container').css('z-index','1000000');
 }
@@ -437,6 +452,20 @@ function throwConsoleError(error){
  */
 function isLiveStream(){
     return $('.ytp-live').length !== 0;
+}
+
+/**
+ * Check if the user is in fullscreen mode
+ */
+function isFullscreen(){
+    return !(typeof $('ytd-app').attr('masthead-hidden_') == "undefined");
+}
+
+/**
+ * Check if the user is in theater mode
+ */
+function isTheaterMode(){
+    return $('#player-theater-container').children().length > 0;
 }
 
 /**

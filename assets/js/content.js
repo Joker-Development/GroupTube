@@ -199,10 +199,14 @@ socket.on('connect', () => {
                  * Update session (View-count etc.)
                  */
                 socket.on('update_session',function(data){
-                    if(isVariableFromType(data.viewer_count, 'number')){
-                        updateViewCounter(data.viewer_count);
+                    if(!isVariableFromType(data, 'undefined')){
+                        if(isVariableFromType(data.viewer_count, 'number')){
+                            updateViewCounter(data.viewer_count);
+                        }else{
+                            throwConsoleError("Invalid Data!");
+                        }
                     }else{
-                        throwConsoleError("Invalid Data!");
+                        updateViewCounter((parseInt($('#grouptube-viewcounter span').text()) - 1));
                     }
                 });
 
@@ -233,7 +237,14 @@ socket.on('connect', () => {
                  */
                 $('body').on('keydown', function (e) {
                     return false;
-                })
+                });
+
+                /**
+                 * Disable focus on movie_player element
+                 */
+                $('*').on('focusin', function(e){
+                    $("#movie_player").blur();
+                });
             }else{
                 throwConsoleError(data.error);
             }

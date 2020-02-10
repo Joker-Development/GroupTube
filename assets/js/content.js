@@ -317,7 +317,10 @@ function isVideoPlaying() {
  * Set current video playtime
  */
 function setVideoTime(time){
-    $('video')[0].currentTime = time;
+    var video = $('video');
+    if(time <= (video[0].duration - 0.25)){
+        video[0].currentTime = time;
+    }
 }
 
 /**

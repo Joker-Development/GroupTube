@@ -6,7 +6,7 @@
     "author": "Lasse Jacobsen & Mahmut Tunctuerk",
     "homepage_url": "https://grouptube.de/",
     "minimum_chrome_version": "66",
-    "permissions": ["activeTab", "declarativeContent", "clipboardWrite"],
+    "permissions": ["declarativeContent", "clipboardWrite"],
     "offline_enabled": false,
     "background": {
         "scripts": ["assets/js/background.js"],

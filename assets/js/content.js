@@ -85,6 +85,7 @@ socket.on('connect', () => {
                 url = addParametertoURL(url, 'grouptube_token', data.token);
                 url = removeParameterFromURL(url, 'list');
                 url = removeParameterFromURL(url, 'index');
+                url = removeParameterFromURL(url, 't');
                 navigator.clipboard.writeText(url).then(() => {
                     setVideoText("Video URL has been copied to Clipboard. Send it to your friends 🙂");
                 }, () => {

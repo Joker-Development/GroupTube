@@ -12,6 +12,13 @@ if(debug){
 }
 
 /**
+ * Variables
+ */
+var ytplayer = retrieveWindowVariables(["ytplayer"]).ytplayer;
+var user_display_name = ytplayer.config.args.user_display_name !== undefined ? ytplayer.config.args.user_display_name: 'Guest';
+var viewer_list = [];
+
+/**
  * If Socket has successfully connected, continue with code
  */
 socket.on('connect', () => {
@@ -40,6 +47,27 @@ socket.on('connect', () => {
             tooltip.css('padding-top', "5px");
             tooltip.css('padding-bottom', "5px");
         }
+        $('.grouptube-viewer-list').hide();
+    });
+
+    $(document).on('click', '#grouptube-viewcounter', function () {
+        var viewer_list_el = $('.grouptube-viewer-list');
+
+        viewer_list_el.find('ul').empty();
+        viewer_list.forEach(function (value, key) {
+            var name = value.name;
+            if(value.isHost){
+                name = value.name + ' <span style="background: red;border-radius: 2px;padding: 2px;font-size: 10px;">HOST</span>';
+            }
+            viewer_list_el.find('ul').append('<li style="margin-bottom: 2px;">' + name + '</li>');
+        });
+
+
+        var leftPos = $(this).offset().left - viewer_list_el.css('width').replace(/[^-\d\.]/g, '')/2;
+        var topPos = $(this).offset().top - viewer_list_el.css('height').replace(/[^-\d\.]/g, '') - 15;
+        viewer_list_el.css('left', leftPos + 'px');
+        viewer_list_el.css('top', topPos + 'px');
+        viewer_list_el.toggle();
     });
 
     /**
@@ -71,6 +99,7 @@ socket.on('connect', () => {
                 createPageOverlay();
                 removeRecommendationWrapper();
                 disableAfterLoad();
+                addToViewerList(socket.id, user_display_name, true);
 
                 /**
                  * On video play, send to server
@@ -121,15 +150,7 @@ socket.on('connect', () => {
                  * Update Session (View-count etc.)
                  */
                 socket.on('update_session',function(data){
-                    if(!isVariableFromType(data, 'undefined')){
-                        if(isVariableFromType(data.viewer_count, 'number')){
-                            updateViewCounter(data.viewer_count);
-                        }else{
-                            throwConsoleError("Invalid Data!");
-                        }
-                    }else{
-                        updateViewCounter((parseInt($('#grouptube-viewcounter span').text()) - 1));
-                    }
+                    updateSession(data);
                 });
 
                 /**
@@ -159,7 +180,7 @@ socket.on('connect', () => {
         /**
          * Join room with token
          */
-        socket.emit('join_room_by_token', token, function(data) {
+        socket.emit('join_room_by_token', token, user_display_name, function(data) {
             if (data.success) {
                 /**
                  * Build Page
@@ -171,6 +192,7 @@ socket.on('connect', () => {
                 createPageOverlay();
                 removeRecommendationWrapper();
                 disableAfterLoad();
+                viewer_list = data.viewer_list;
 
                 /**
                  * On Toggle video play
@@ -199,15 +221,7 @@ socket.on('connect', () => {
                  * Update session (View-count etc.)
                  */
                 socket.on('update_session',function(data){
-                    if(!isVariableFromType(data, 'undefined')){
-                        if(isVariableFromType(data.viewer_count, 'number')){
-                            updateViewCounter(data.viewer_count);
-                        }else{
-                            throwConsoleError("Invalid Data!");
-                        }
-                    }else{
-                        updateViewCounter((parseInt($('#grouptube-viewcounter span').text()) - 1));
-                    }
+                    updateSession(data);
                 });
 
                 /**
@@ -365,9 +379,9 @@ function setVideoText(text){
  */
 function createViewCounter() {
     $('.ytp-right-controls').prepend(`
-        <div id="grouptube-viewcounter" class="ytp-subtitles-button ytp-button" style="opacity: 1;">
-            <button style="display: block;text-transform: unset;opacity: 1;" disabled="true" class="ytp-button">
-                <svg aria-hidden="true" height="100%" width="40%" focusable="false" data-prefix="fas" data-icon="eye" class="svg-inline--fa fa-eye fa-w-18" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" style="display: inline-block;color: #cc0000;"><path fill="currentColor" d="M572.52 241.4C518.29 135.59 410.93 64 288 64S57.68 135.64 3.48 241.41a32.35 32.35 0 0 0 0 29.19C57.71 376.41 165.07 448 288 448s230.32-71.64 284.52-177.41a32.35 32.35 0 0 0 0-29.19zM288 400a144 144 0 1 1 144-144 143.93 143.93 0 0 1-144 144zm0-240a95.31 95.31 0 0 0-25.31 3.79 47.85 47.85 0 0 1-66.9 66.9A95.78 95.78 0 1 0 288 160z"></path></svg><span style="display: inline-block;vertical-align: top;margin-left: 4px;font-size: 90%;padding-top: 1px;">1</span>
+        <div id="grouptube-viewcounter" class="ytp-subtitles-button ytp-button" style="opacity: 1;cursor: pointer;">
+            <button style="display: block;text-transform: unset;opacity: 1;cursor: pointer;" disabled="true" class="ytp-button">
+                <svg aria-hidden="true" height="100%" width="40%" focusable="false" data-prefix="fas" data-icon="eye" class="svg-inline--fa fa-eye fa-w-18" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" style="display: inline-block;color: #cc0000;pointer-events: all;cursor: pointer;"><path fill="currentColor" d="M572.52 241.4C518.29 135.59 410.93 64 288 64S57.68 135.64 3.48 241.41a32.35 32.35 0 0 0 0 29.19C57.71 376.41 165.07 448 288 448s230.32-71.64 284.52-177.41a32.35 32.35 0 0 0 0-29.19zM288 400a144 144 0 1 1 144-144 143.93 143.93 0 0 1-144 144zm0-240a95.31 95.31 0 0 0-25.31 3.79 47.85 47.85 0 0 1-66.9 66.9A95.78 95.78 0 1 0 288 160z"></path></svg><span style="display: inline-block;vertical-align: top;margin-left: 4px;font-size: 90%;padding-top: 1px;">1</span>
             </button>
         </div>
     `);
@@ -406,8 +420,59 @@ function createPageOverlay() {
     if(isFullscreen()){
         $('.ytp-fullscreen-button').click();
     }
-    $('body').prepend('<div class="grouptube-overlay" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:100000;background-color:rgba(0,0,0,0.8)"></div>');
+    $('body').prepend('<div class="grouptube-viewer-list" style="display:none;position: absolute;z-index: 1000001;background: rgba(0, 0, 0, 0.44);border-radius: 5px;width: auto;min-width: 100px;font-size: 12px;color: white;padding: 5px 10px;top: 100px;left: 440px;"><span>Viewers:</span><ul style="list-style: none;margin-top: 2px;"></ul></div><div class="grouptube-overlay" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:100000;background-color:rgba(0,0,0,0.8)"></div>');
     $('#player-container').css('z-index','1000000');
+}
+
+function updateSession(data) {
+    if(!isVariableFromType(data, 'undefined')){
+        if(isVariableFromType(data.viewer_count, 'number')){
+            updateViewCounter(data.viewer_count);
+        }else{
+            updateViewCounter((parseInt($('#grouptube-viewcounter span').text()) - 1));
+        }
+
+        /**
+         * Handle Viewer List
+         */
+        if(!isVariableFromType(data.viewer_data, 'undefined')){
+            if(data.viewer_data.type === 'join'){
+                if(isVariableFromType(data.viewer_data.display_name, 'string')){
+                    addToViewerList(data.viewer_data.socket_id, data.viewer_data.display_name);
+                }
+            }else if(data.viewer_data.type === 'leave') {
+                if(isVariableFromType(data.viewer_data.socket_id, 'string')){
+                    removeFromViewerList(data.viewer_data.socket_id);
+                }
+            }
+        }else{
+            throwConsoleError("Invalid Data!");
+        }
+    }
+}
+
+/**
+ * Add to viewer List
+ */
+function addToViewerList(id, name, isHost = false) {
+    viewer_list.push({
+        'name': name,
+        'id': id,
+        'isHost': isHost
+    });
+    socket.emit('update_viewer_list', session_token, viewer_list);
+}
+
+/**
+ * Remove from viewer List
+ */
+function removeFromViewerList(id) {
+    viewer_list.forEach(function (value, key) {
+        if(value.id === id){
+            viewer_list.splice(key, 1);
+        }
+    });
+    socket.emit('update_viewer_list', session_token, viewer_list);
 }
 
 /**
@@ -504,4 +569,33 @@ function addParametertoURL(url, parameter, value){
     search_params.append(parameter, value);
     url_old.search = search_params.toString();
     return url_old.toString();
+}
+
+/**
+ * Retrieve Variables from page
+ */
+function retrieveWindowVariables(variables) {
+    var ret = {};
+
+    var scriptContent = "";
+    for (var i = 0; i < variables.length; i++) {
+        var currVariableOne = variables[i];
+        scriptContent += "if (typeof " + currVariableOne + " !== 'undefined') document.body.setAttribute('tmp_" + currVariableOne + "', JSON.stringify(" + currVariableOne + "));\n"
+    }
+
+    var script = document.createElement('script');
+    script.id = 'tmpScript';
+    script.appendChild(document.createTextNode(scriptContent));
+    (document.body || document.head || document.documentElement).appendChild(script);
+
+    for (var i = 0; i < variables.length; i++) {
+        var currVariableTwo = variables[i];
+        var body = $("body");
+        ret[currVariableTwo] = $.parseJSON(body.attr("tmp_" + currVariableTwo));
+        body.removeAttr("tmp_" + currVariableTwo);
+    }
+
+    $("#tmpScript").remove();
+
+    return ret;
 }

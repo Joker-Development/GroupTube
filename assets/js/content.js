@@ -52,21 +52,11 @@ socket.on('connect', () => {
 
     $(document).on('click', '#grouptube-viewcounter', function () {
         var viewer_list_el = $('.grouptube-viewer-list');
-
-        viewer_list_el.find('ul').empty();
-        viewer_list.forEach(function (value, key) {
-            var name = value.name;
-            if(value.isHost){
-                name = value.name + ' <span style="background: red;border-radius: 2px;padding: 2px;font-size: 10px;">HOST</span>';
-            }
-            viewer_list_el.find('ul').append('<li style="margin-bottom: 2px;">' + name + '</li>');
-        });
-
-
         var leftPos = $(this).offset().left - viewer_list_el.css('width').replace(/[^-\d\.]/g, '')/2;
         var topPos = $(this).offset().top - viewer_list_el.css('height').replace(/[^-\d\.]/g, '') - 15;
+        var bottomPos = window.innerHeight - $(this).offset().top + 15;
         viewer_list_el.css('left', leftPos + 'px');
-        viewer_list_el.css('top', topPos + 'px');
+        viewer_list_el.css('bottom', bottomPos + 'px');
         viewer_list_el.toggle();
     });
 
@@ -421,7 +411,7 @@ function createPageOverlay() {
     if(isFullscreen()){
         $('.ytp-fullscreen-button').click();
     }
-    $('body').prepend('<div class="grouptube-viewer-list" style="display:none;position: absolute;z-index: 1000001;background: rgba(0, 0, 0, 0.44);border-radius: 5px;width: auto;min-width: 100px;font-size: 12px;color: white;padding: 5px 10px;top: 100px;left: 440px;"><span>Viewers:</span><ul style="list-style: none;margin-top: 2px;"></ul></div><div class="grouptube-overlay" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:100000;background-color:rgba(0,0,0,0.8)"></div>');
+    $('body').prepend('<div class="grouptube-viewer-list" style="display:none;position: absolute;z-index: 1000001;background: rgba(0, 0, 0, 0.44);border-radius: 5px;width: auto;min-width: 100px;font-size: 12px;color: white;padding: 5px 10px;left: 440px;"><span>Viewers:</span><ul style="list-style: none;margin-top: 2px;"></ul></div><div class="grouptube-overlay" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:100000;background-color:rgba(0,0,0,0.8)"></div>');
     $('#player-container').css('z-index','1000000');
 }
 
@@ -462,6 +452,7 @@ function addToViewerList(id, name, isHost = false) {
         'isHost': isHost
     });
     socket.emit('update_viewer_list', session_token, viewer_list);
+    updateViewerListHTML();
 }
 
 /**
@@ -474,6 +465,23 @@ function removeFromViewerList(id) {
         }
     });
     socket.emit('update_viewer_list', session_token, viewer_list);
+    updateViewerListHTML();
+}
+
+/**
+ * Update viewer list html
+ */
+function updateViewerListHTML() {
+    var viewer_list_el = $('.grouptube-viewer-list');
+
+    viewer_list_el.find('ul').empty();
+    viewer_list.forEach(function (value, key) {
+        var name = value.name;
+        if(value.isHost){
+            name = value.name + ' <span style="background: red;border-radius: 2px;padding: 2px;font-size: 10px;">HOST</span>';
+        }
+        viewer_list_el.find('ul').append('<li style="margin-bottom: 2px;">' + name + '</li>');
+    });
 }
 
 /**

@@ -60,6 +60,10 @@ socket.on('connect', () => {
         viewer_list_el.toggle();
     });
 
+    $(document).on('click', '#grouptube-session-leave', function () {
+        leaveSession();
+    });
+
     /**
      * Click Event for starting a session
      */
@@ -263,6 +267,13 @@ socket.on('connect', () => {
             $('#movie_player').append(getTooltipHtml());
         }
     }
+
+    /**
+     * When debug mode is on, render debug button
+     */
+    if(debug){
+        renderDebugButton();
+    }
 });
 updateViewCounter("");
 
@@ -286,6 +297,32 @@ function getButtonHtml(){
             <path fill="currentColor" d="M96 224c35.3 0 64-28.7 64-64s-28.7-64-64-64-64 28.7-64 64 28.7 64 64 64zm448 0c35.3 0 64-28.7 64-64s-28.7-64-64-64-64 28.7-64 64 28.7 64 64 64zm32 32h-64c-17.6 0-33.5 7.1-45.1 18.6 40.3 22.1 68.9 62 75.1 109.4h66c17.7 0 32-14.3 32-32v-32c0-35.3-28.7-64-64-64zm-256 0c61.9 0 112-50.1 112-112S381.9 32 320 32 208 82.1 208 144s50.1 112 112 112zm76.8 32h-8.3c-20.8 10-43.9 16-68.5 16s-47.6-6-68.5-16h-8.3C179.6 288 128 339.6 128 403.2V432c0 26.5 21.5 48 48 48h288c26.5 0 48-21.5 48-48v-28.8c0-63.6-51.6-115.2-115.2-115.2zm-223.7-13.4C161.5 263.1 145.6 256 128 256H64c-35.3 0-64 28.7-64 64v32c0 17.7 14.3 32 32 32h65.9c6.3-47.4 34.9-87.3 75.2-109.4z"></path>
         </svg>
     </button>
+    `;
+}
+
+/**
+ * Get debug button html
+ */
+function getDebugButtonHtml(){
+    return `
+    <button id="grouptube-debug-btn" class="ytp-subtitles-button ytp-button" aria-label="Debug GroupTube" style="text-align: center;" aria-pressed="false" title="Debug GroupTube">
+        <svg aria-hidden="true" height="100%" width="60%" focusable="false" data-prefix="fas" data-icon="bug" class="svg-inline--fa fa-bug fa-w-16" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+        <path fill="currentColor" d="M511.988 288.9c-.478 17.43-15.217 31.1-32.653 31.1H424v16c0 21.864-4.882 42.584-13.6 61.145l60.228 60.228c12.496 12.497 12.496 32.758 0 45.255-12.498 12.497-32.759 12.496-45.256 0l-54.736-54.736C345.886 467.965 314.351 480 280 480V236c0-6.627-5.373-12-12-12h-24c-6.627 0-12 5.373-12 12v244c-34.351 0-65.886-12.035-90.636-32.108l-54.736 54.736c-12.498 12.497-32.759 12.496-45.256 0-12.496-12.497-12.496-32.758 0-45.255l60.228-60.228C92.882 378.584 88 357.864 88 336v-16H32.666C15.23 320 .491 306.33.013 288.9-.484 270.816 14.028 256 32 256h56v-58.745l-46.628-46.628c-12.496-12.497-12.496-32.758 0-45.255 12.498-12.497 32.758-12.497 45.256 0L141.255 160h229.489l54.627-54.627c12.498-12.497 32.758-12.497 45.256 0 12.496 12.497 12.496 32.758 0 45.255L424 197.255V256h56c17.972 0 32.484 14.816 31.988 32.9zM257 0c-61.856 0-112 50.144-112 112h224C369 50.144 318.856 0 257 0z"></path>
+        </svg>
+    </button>
+    `;
+}
+
+/**
+ * Get leave session button html
+ */
+function getLeaveSessionButtonHtml() {
+    return `
+    <span id="grouptube-session-leave" title="Leave the GroupTube Session" style="position: fixed;z-index: 2000000;top: 8px;right: 0;color: white;width: 46px;padding: 0;margin: 0;cursor: pointer;">
+        <svg height="100%" width="60%" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="times" class="svg-inline--fa fa-times fa-w-11" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 352 512">
+            <path fill="currentColor" d="M242.72 256l100.07-100.07c12.28-12.28 12.28-32.19 0-44.48l-22.24-22.24c-12.28-12.28-32.19-12.28-44.48 0L176 189.28 75.93 89.21c-12.28-12.28-32.19-12.28-44.48 0L9.21 111.45c-12.28 12.28-12.28 32.19 0 44.48L109.28 256 9.21 356.07c-12.28 12.28-12.28 32.19 0 44.48l22.24 22.24c12.28 12.28 32.2 12.28 44.48 0L176 322.72l100.07 100.07c12.28 12.28 32.2 12.28 44.48 0l22.24-22.24c12.28-12.28 12.28-32.19 0-44.48L242.72 256z"></path>
+        </svg>
+    </span>
     `;
 }
 
@@ -411,7 +448,8 @@ function createPageOverlay() {
     if(isFullscreen()){
         $('.ytp-fullscreen-button').click();
     }
-    $('body').prepend('<div class="grouptube-viewer-list" style="display:none;position: absolute;z-index: 1000001;background: rgba(0, 0, 0, 0.44);border-radius: 5px;width: auto;min-width: 100px;font-size: 12px;color: white;padding: 5px 10px;left: 440px;"><span>Viewers:</span><ul style="list-style: none;margin-top: 2px;"></ul></div><div class="grouptube-overlay" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:100000;background-color:rgba(0,0,0,0.8)"></div>');
+    var leaveSessionBtnHtml = getLeaveSessionButtonHtml();
+    $('body').prepend(leaveSessionBtnHtml+'<div class="grouptube-viewer-list" style="display:none;position: absolute;z-index: 1000001;background: rgba(0, 0, 0, 0.44);border-radius: 5px;width: auto;min-width: 100px;font-size: 12px;color: white;padding: 5px 10px;left: 440px;"><span>Viewers:</span><ul style="list-style: none;margin-top: 2px;"></ul></div><div class="grouptube-overlay" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:100000;background-color:rgba(0,0,0,0.8)"></div>');
     $('#player-container').css('z-index','1000000');
 }
 
@@ -607,4 +645,24 @@ function retrieveWindowVariables(variables) {
     $("#tmpScript").remove();
 
     return ret;
+}
+
+/**
+ * Append Debug Button to Youtube controls
+ */
+function renderDebugButton() {
+    $('.ytp-right-controls').prepend(getDebugButtonHtml());
+}
+
+/**
+ * Leave GroupTube Session
+ */
+function leaveSession() {
+    var url = window.location.href;
+    url = removeParameterFromURL(url, 'grouptube_token');
+    url = removeParameterFromURL(url, 'list');
+    url = removeParameterFromURL(url, 'index');
+    url = removeParameterFromURL(url, 't');
+    url = addParametertoURL(url, 't', ((Math.round(getVideoTime()) - 1) >= 0 ? (Math.round(getVideoTime()) - 1): 0));
+    window.location.href = url;
 }

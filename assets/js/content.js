@@ -1,5 +1,6 @@
 var debug = false;
 var session_token;
+var host;
 var socket;
 
 /**
@@ -64,6 +65,10 @@ socket.on('connect', () => {
         leaveSession();
     });
 
+    $(document).on('click', '#grouptube-debug-btn', function () {
+
+    });
+
     /**
      * Click Event for starting a session
      */
@@ -75,6 +80,7 @@ socket.on('connect', () => {
                  * Get token and build URL
                  */
                 session_token = data.token;
+                host = user_display_name;
                 var url = window.location.href;
                 url = addParametertoURL(url, 'grouptube_token', data.token);
                 url = removeParameterFromURL(url, 'list');
@@ -92,6 +98,7 @@ socket.on('connect', () => {
                 $('#grouptube-session-start').attr('disabled', 'disabled');
                 updateViewCounter(1);
                 createPageOverlay();
+                createToastContainer();
                 removeRecommendationWrapper();
                 disableAfterLoad();
                 addToViewerList(socket.id, user_display_name, true);
@@ -180,14 +187,16 @@ socket.on('connect', () => {
                 /**
                  * Build Page
                  */
+                viewer_list = data.viewer_list;
+                setHost();
                 setPlayVideo(false);
                 setVideoTime(0);
                 disableControls();
                 createViewCounter();
                 createPageOverlay();
+                createToastContainer();
                 removeRecommendationWrapper();
                 disableAfterLoad();
-                viewer_list = data.viewer_list;
 
                 /**
                  * On Toggle video play
@@ -338,6 +347,32 @@ function getTooltipHtml(){
 }
 
 /**
+ * Get Checkmark html for toast
+ */
+function getToastCheckHtml() {
+    return `
+    <span style="width: 30px;color: green;">
+        <svg height="100%" width="60%" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="check" class="svg-inline--fa fa-check fa-w-16" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+            <path fill="currentColor" d="M173.898 439.404l-166.4-166.4c-9.997-9.997-9.997-26.206 0-36.204l36.203-36.204c9.997-9.998 26.207-9.998 36.204 0L192 312.69 432.095 72.596c9.997-9.997 26.207-9.997 36.204 0l36.203 36.204c9.997 9.997 9.997 26.206 0 36.204l-294.4 294.401c-9.998 9.997-26.207 9.997-36.204-.001z"></path>
+        </svg>
+    </span>
+    `;
+}
+
+/**
+ * Get Times html for toast
+ */
+function getToastTimesHtml() {
+    return `
+    <span style="width: 25px;margin-bottom: -4px;color: red;">
+        <svg height="100%" width="60%" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="times" class="svg-inline--fa fa-times fa-w-11" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 352 512">
+            <path fill="currentColor" d="M242.72 256l100.07-100.07c12.28-12.28 12.28-32.19 0-44.48l-22.24-22.24c-12.28-12.28-32.19-12.28-44.48 0L176 189.28 75.93 89.21c-12.28-12.28-32.19-12.28-44.48 0L9.21 111.45c-12.28 12.28-12.28 32.19 0 44.48L109.28 256 9.21 356.07c-12.28 12.28-12.28 32.19 0 44.48l22.24 22.24c12.28 12.28 32.2 12.28 44.48 0L176 322.72l100.07 100.07c12.28 12.28 32.2 12.28 44.48 0l22.24-22.24c12.28-12.28 12.28-32.19 0-44.48L242.72 256z"></path>
+        </svg>
+    </span>
+    `;
+}
+
+/**
  * Play/pause video
  */
 function setPlayVideo(status){
@@ -379,11 +414,19 @@ function disableControls() {
     $('.ytp-play-button.ytp-button, .ytp-next-button.ytp-button, .ytp-miniplayer-button.ytp-button, .ytp-right-controls>[class=ytp-button]').attr('disabled', 'disabled').css('pointer-events', 'none').css('opacity', '0.2');
     $('#movie_player, video, .ytp-progress-bar-container').css('pointer-events', 'none');
     $('.ytp-chrome-controls').css('pointer-events', 'all');
-    $('.ytp-left-controls').append(`
-    <div class="ytp-time-display notranslate">
-        <button style="display: block; text-transform: unset;" disabled="true" class="ytp-live-badge ytp-button">Video is controlled by GroupTube Session Owner</button>
-    </div>
-    `);
+    if(host){
+        $('.ytp-left-controls').append(`
+            <div class="ytp-time-display notranslate">
+                <button style="display: block; text-transform: unset;" disabled="true" class="ytp-live-badge ytp-button">Video is controlled by `+host+`</button>
+            </div>
+        `);
+    }else{
+        $('.ytp-left-controls').append(`
+            <div class="ytp-time-display notranslate">
+                <button style="display: block; text-transform: unset;" disabled="true" class="ytp-live-badge ytp-button">Video is controlled by GroupTube Session Owner</button>
+            </div>
+        `);
+    }
 }
 
 /**
@@ -453,6 +496,32 @@ function createPageOverlay() {
     $('#player-container').css('z-index','1000000');
 }
 
+/**
+ * Create Toast Container
+ */
+function createToastContainer(){
+    $('body').prepend('<div id="grouptube-toast-container" style="position: fixed;left: 0;bottom: 0;z-index: 10000000000;font-size: 13px;"></div>')
+}
+
+/**
+ * Add Toast to container
+ */
+function addToast(message, timeToLive){
+    if(!timeToLive){
+        timeToLive = 2000;
+    }
+    var html = '<div style="align-items: center;background: #2d2e31;border-radius: 4px;bottom: 0;box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.28);box-sizing: border-box;display: flex;margin: 24px;max-width: 568px;min-height: 52px;min-width: 288px;padding: 0 24px;color: white;" class="grouptube-toast">`+message+`</div>';
+    var toast = $(html).prependTo('#grouptube-toast-container');
+    setTimeout(function () {
+        toast.fadeOut(650, function(){
+            toast.remove();
+        });
+    }, timeToLive);
+}
+
+/**
+ * Update Session Data
+ */
 function updateSession(data) {
     if(!isVariableFromType(data, 'undefined')){
         if(isVariableFromType(data.viewer_count, 'number')){
@@ -490,6 +559,9 @@ function addToViewerList(id, name, isHost = false) {
         'isHost': isHost
     });
     socket.emit('update_viewer_list', session_token, viewer_list);
+    if(id !== socket.id){
+        addToast(getToastCheckHtml() + name + ' joined the session!');
+    }
     updateViewerListHTML();
 }
 
@@ -497,12 +569,17 @@ function addToViewerList(id, name, isHost = false) {
  * Remove from viewer List
  */
 function removeFromViewerList(id) {
+    var name = '';
     viewer_list.forEach(function (value, key) {
         if(value.id === id){
+            name = value.name;
             viewer_list.splice(key, 1);
         }
     });
     socket.emit('update_viewer_list', session_token, viewer_list);
+    if(id !== socket.id){
+        addToast(getToastTimesHtml() + name + ' left the session!');
+    }
     updateViewerListHTML();
 }
 
@@ -519,6 +596,17 @@ function updateViewerListHTML() {
             name = value.name + ' <span style="background: red;border-radius: 2px;padding: 2px;font-size: 10px;">HOST</span>';
         }
         viewer_list_el.find('ul').append('<li style="margin-bottom: 2px;">' + name + '</li>');
+    });
+}
+
+/**
+ * Set Session Host
+ */
+function setHost() {
+    viewer_list.forEach(function (value, key) {
+        if(value.isHost){
+            host = value.name;
+        }
     });
 }
 

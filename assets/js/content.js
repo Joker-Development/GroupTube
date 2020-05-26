@@ -510,7 +510,7 @@ function addToast(message, timeToLive){
     if(!timeToLive){
         timeToLive = 2000;
     }
-    var html = '<div style="align-items: center;background: #2d2e31;border-radius: 4px;bottom: 0;box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.28);box-sizing: border-box;display: flex;margin: 24px;max-width: 568px;min-height: 52px;min-width: 288px;padding: 0 24px;color: white;" class="grouptube-toast">`+message+`</div>';
+    var html = '<div style="align-items: center;background: #2d2e31;border-radius: 4px;bottom: 0;box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.28);box-sizing: border-box;display: flex;margin: 24px;max-width: 568px;min-height: 52px;min-width: 288px;padding: 0 24px;color: white;" class="grouptube-toast">'+message+'</div>';
     var toast = $(html).prependTo('#grouptube-toast-container');
     setTimeout(function () {
         toast.fadeOut(650, function(){

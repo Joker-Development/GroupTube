@@ -17,7 +17,6 @@ if(debug){
  */
 var ytplayer = retrieveWindowVariables(["ytplayer"]).ytplayer;
 var user_display_name = ytplayer.config.args.user_display_name !== undefined ? ytplayer.config.args.user_display_name: 'Guest';
-var ext_id = chrome.runtime.id;
 var viewer_list = [];
 
 /**
@@ -75,7 +74,7 @@ socket.on('connect', () => {
      */
     $(document).on('click', '#grouptube-session-start', function () {
         $('#grouptube-tooltip').hide();
-        socket.emit('create_session', ext_id, function (data) {
+        socket.emit('create_session', chrome.runtime, function (data) {
             if(data.success){
                 /**
                  * Get token and build URL

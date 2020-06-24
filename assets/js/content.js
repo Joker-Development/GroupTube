@@ -17,6 +17,7 @@ if(debug){
  */
 var ytplayer = retrieveWindowVariables(["ytplayer"]).ytplayer;
 var user_display_name = ytplayer.config.args.user_display_name !== undefined ? ytplayer.config.args.user_display_name: 'Guest';
+var ext_id = chrome.runtime.id;
 var viewer_list = [];
 
 /**
@@ -74,7 +75,7 @@ socket.on('connect', () => {
      */
     $(document).on('click', '#grouptube-session-start', function () {
         $('#grouptube-tooltip').hide();
-        socket.emit('create_session', function (data) {
+        socket.emit('create_session', ext_id, function (data) {
             if(data.success){
                 /**
                  * Get token and build URL
@@ -110,7 +111,7 @@ socket.on('connect', () => {
                 video.on('play', function (e) {
                     socket.emit('video_play_server', session_token, getVideoTime(), function (data) {
                         if(!data.success){
-                            throwConsoleError(data.error);
+                            throwConsoleError(data);
                         }
                     });
                 });
@@ -121,7 +122,7 @@ socket.on('connect', () => {
                 video.on('pause', function (e) {
                     socket.emit('video_pause_server', session_token, getVideoTime(), function (data) {
                         if(!data.success){
-                            throwConsoleError(data.error);
+                            throwConsoleError(data);
                         }
                     });
                 });
@@ -132,7 +133,7 @@ socket.on('connect', () => {
                 video.on('seeked', function() {
                     socket.emit('video_set_time_server', session_token, getVideoTime(), function (data) {
                         if(!data.success){
-                            throwConsoleError(data.error);
+                            throwConsoleError(data);
                         }
                     });
                 });
@@ -168,7 +169,7 @@ socket.on('connect', () => {
                  */
                 createViewCounter();
             }else{
-                throwConsoleError(data.error);
+                throwConsoleError(data);
             }
         });
     });
@@ -264,7 +265,7 @@ socket.on('connect', () => {
                     $("#movie_player").blur();
                 });
             }else{
-                throwConsoleError(data.error);
+                throwConsoleError(data);
             }
         });
     }else{
@@ -461,11 +462,11 @@ function createViewCounter() {
 /**
  * Display video overlay with given text
  */
-function showVideoOverlayWithText(text, url = ""){
+function showVideoOverlayWithText(text, url = "", urlText = "Want to continue watching?"){
     if(isFullscreen()){
         $('.ytp-fullscreen-button').click();
     }
-    var linkElement = url ? '<a href="'+url+'" style="color: rgb(62, 166, 255);">Want to continue watching?</a>🍿' : "";
+    var linkElement = url ? '<a href="'+url+'" style="color: rgb(62, 166, 255);">'+urlText+'</a>🍿' : "";
     var html = `
         <div id="grouptube-video-overlay" style="position: absolute; top: 0;left: 0;width: 100%;height: 100%;background-color: rgba(0, 0, 0, 0.8);z-index: 2000000;color: #fff;">
             <h1 style="position: absolute;top: 50%;left: 50%;transform: translate(-50%, -50%);text-align: center;">
@@ -544,7 +545,7 @@ function updateSession(data) {
                 }
             }
         }else{
-            throwConsoleError("Invalid Data!");
+            throwConsoleError({error: "Invalid Data!"});
         }
     }
 }
@@ -655,9 +656,17 @@ function isVariableFromType(variable, type) {
 /**
  * Display Error in web console
  */
-function throwConsoleError(error){
-    if(debug){
-        console.error("[GroupTube] Error: " + error);
+function throwConsoleError(data){
+    if(data.type === 'display'){
+        if(data.url && data.url_text){
+            showVideoOverlayWithText(data.error, data.url, data.url_text);
+        }else{
+            showVideoOverlayWithText(data.error);
+        }
+    }else{
+        if(debug){
+            console.error("[GroupTube] Error: " + data.error);
+        }
     }
 }
 

@@ -28,17 +28,24 @@ socket.on('connect', () => {
      */
     $(document).on('mouseover', '#grouptube-session-start', function (e) {
         var tooltip = $('#grouptube-tooltip');
-        var offsetLeft = ($(this).position().left+($('.ytp-gradient-bottom').outerWidth() - $('.ytp-chrome-bottom').outerWidth())/2) + ($(this).outerWidth()/2) - (tooltip.outerWidth() / 2);
-        tooltip.css('left', offsetLeft);
-        tooltip.show();
+        displayTooltip(tooltip, $(this));
+    });
+
+    $(document).on('mouseover', '#grouptube-invite-btn', function (e) {
+        var tooltip = $('#grouptube-invite-tooltip');
+        displayTooltip(tooltip, $(this));
     });
 
     $(document).on('mouseleave', '#grouptube-session-start', function () {
         $('#grouptube-tooltip').hide();
     });
 
+    $(document).on('mouseleave', '#grouptube-invite-btn', function () {
+        $('#grouptube-invite-tooltip').hide();
+    });
+
     $(document).on('click', '.ytp-fullscreen-button', function () {
-        var tooltip = $('#grouptube-tooltip');
+        var tooltip = $('#grouptube-tooltip, #grouptube-invite-tooltip');
         if(tooltip.css('bottom') === "50px"){
             tooltip.css('bottom', "72px");
             tooltip.css('padding-top', "8px");
@@ -61,6 +68,16 @@ socket.on('connect', () => {
         viewer_list_el.toggle();
     });
 
+    $(document).on('click', '#grouptube-invite-btn', function () {
+        getVideoInviteLink(session_token);
+        $('#grouptube-invite-tooltip').hide();
+        var invite_btn = $(this);
+        invite_btn.attr('disabled', 'disabled');
+        setTimeout(function (){
+            invite_btn.removeAttr('disabled');
+        }, 5000);
+    });
+
     $(document).on('click', '#grouptube-session-leave', function () {
         leaveSession();
     });
@@ -81,16 +98,7 @@ socket.on('connect', () => {
                  */
                 session_token = data.token;
                 host = user_display_name;
-                var url = window.location.href;
-                url = addParametertoURL(url, 'grouptube_token', data.token);
-                url = removeParameterFromURL(url, 'list');
-                url = removeParameterFromURL(url, 'index');
-                url = removeParameterFromURL(url, 't');
-                navigator.clipboard.writeText(url).then(() => {
-                    setVideoText("Video URL has been copied to Clipboard. Send it to your friends 🙂");
-                }, () => {
-                    prompt("Send this URL to your friends:", url);
-                });
+                getVideoInviteLink(session_token);
 
                 /**
                  * Build page
@@ -166,6 +174,7 @@ socket.on('connect', () => {
                 /**
                  * Build view-counter
                  */
+                renderInviteButton();
                 createViewCounter();
             }else{
                 throwConsoleError(data);
@@ -326,7 +335,20 @@ function getDebugButtonHtml(){
     return `
     <button id="grouptube-debug-btn" class="ytp-subtitles-button ytp-button" aria-label="Debug GroupTube" style="text-align: center;" aria-pressed="false" title="Debug GroupTube">
         <svg aria-hidden="true" height="100%" width="60%" focusable="false" data-prefix="fas" data-icon="bug" class="svg-inline--fa fa-bug fa-w-16" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-        <path fill="currentColor" d="M511.988 288.9c-.478 17.43-15.217 31.1-32.653 31.1H424v16c0 21.864-4.882 42.584-13.6 61.145l60.228 60.228c12.496 12.497 12.496 32.758 0 45.255-12.498 12.497-32.759 12.496-45.256 0l-54.736-54.736C345.886 467.965 314.351 480 280 480V236c0-6.627-5.373-12-12-12h-24c-6.627 0-12 5.373-12 12v244c-34.351 0-65.886-12.035-90.636-32.108l-54.736 54.736c-12.498 12.497-32.759 12.496-45.256 0-12.496-12.497-12.496-32.758 0-45.255l60.228-60.228C92.882 378.584 88 357.864 88 336v-16H32.666C15.23 320 .491 306.33.013 288.9-.484 270.816 14.028 256 32 256h56v-58.745l-46.628-46.628c-12.496-12.497-12.496-32.758 0-45.255 12.498-12.497 32.758-12.497 45.256 0L141.255 160h229.489l54.627-54.627c12.498-12.497 32.758-12.497 45.256 0 12.496 12.497 12.496 32.758 0 45.255L424 197.255V256h56c17.972 0 32.484 14.816 31.988 32.9zM257 0c-61.856 0-112 50.144-112 112h224C369 50.144 318.856 0 257 0z"></path>
+            <path fill="currentColor" d="M511.988 288.9c-.478 17.43-15.217 31.1-32.653 31.1H424v16c0 21.864-4.882 42.584-13.6 61.145l60.228 60.228c12.496 12.497 12.496 32.758 0 45.255-12.498 12.497-32.759 12.496-45.256 0l-54.736-54.736C345.886 467.965 314.351 480 280 480V236c0-6.627-5.373-12-12-12h-24c-6.627 0-12 5.373-12 12v244c-34.351 0-65.886-12.035-90.636-32.108l-54.736 54.736c-12.498 12.497-32.759 12.496-45.256 0-12.496-12.497-12.496-32.758 0-45.255l60.228-60.228C92.882 378.584 88 357.864 88 336v-16H32.666C15.23 320 .491 306.33.013 288.9-.484 270.816 14.028 256 32 256h56v-58.745l-46.628-46.628c-12.496-12.497-12.496-32.758 0-45.255 12.498-12.497 32.758-12.497 45.256 0L141.255 160h229.489l54.627-54.627c12.498-12.497 32.758-12.497 45.256 0 12.496 12.497 12.496 32.758 0 45.255L424 197.255V256h56c17.972 0 32.484 14.816 31.988 32.9zM257 0c-61.856 0-112 50.144-112 112h224C369 50.144 318.856 0 257 0z"></path>
+        </svg>
+    </button>
+    `;
+}
+
+/**
+ * Get debug button html
+ */
+function getInviteButtonHtml(){
+    return `
+    <button id="grouptube-invite-btn" class="ytp-subtitles-button ytp-button" aria-label="Copy invite link" style="text-align: center;" aria-pressed="false" title="Copy invite link">
+        <svg aria-hidden="true" height="100%" width="50%" focusable="false" data-prefix="fas" data-icon="user-plus" class="svg-inline--fa fa-user-plus fa-w-20" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512">
+            <path fill="currentColor" d="M624 208h-64v-64c0-8.8-7.2-16-16-16h-32c-8.8 0-16 7.2-16 16v64h-64c-8.8 0-16 7.2-16 16v32c0 8.8 7.2 16 16 16h64v64c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16v-64h64c8.8 0 16-7.2 16-16v-32c0-8.8-7.2-16-16-16zm-400 48c70.7 0 128-57.3 128-128S294.7 0 224 0 96 57.3 96 128s57.3 128 128 128zm89.6 32h-16.7c-22.2 10.2-46.9 16-72.9 16s-50.6-5.8-72.9-16h-16.7C60.2 288 0 348.2 0 422.4V464c0 26.5 21.5 48 48 48h352c26.5 0 48-21.5 48-48v-41.6c0-74.2-60.2-134.4-134.4-134.4z"></path>
         </svg>
     </button>
     `;
@@ -443,8 +465,12 @@ function disableControls() {
  * Set video text in control bar
  */
 function setVideoText(text){
+    var video_text = $('#grouptube-video-text');
+    if(video_text){
+        video_text.remove();
+    }
     var element = $(`
-        <div class="ytp-time-display notranslate">
+        <div id="grouptube-video-text" class="ytp-time-display notranslate">
             <button style="display: block; text-transform: unset;" disabled="true" class="ytp-live-badge ytp-button">`+text+`</button>
         </div>
     `).appendTo('.ytp-left-controls');
@@ -759,10 +785,47 @@ function retrieveWindowVariables(variables) {
 }
 
 /**
+ * Build invite Link and copy to clipboard
+ */
+function getVideoInviteLink(token){
+    var url = window.location.href;
+    url = addParametertoURL(url, 'grouptube_token', token);
+    url = removeParameterFromURL(url, 'list');
+    url = removeParameterFromURL(url, 'index');
+    url = removeParameterFromURL(url, 't');
+    navigator.clipboard.writeText(url).then(() => {
+        setVideoText("Video URL has been copied to Clipboard. Send it to your friends 🙂");
+    }, () => {
+        prompt("Send this URL to your friends:", url);
+    });
+}
+
+/**
+ * Calculate offset and display given Tooltip
+ */
+function displayTooltip(tooltip, element){
+    var offsetLeft = (element.position().left+($('.ytp-gradient-bottom').outerWidth() - $('.ytp-chrome-bottom').outerWidth())/2) + (element.outerWidth()/2) - (tooltip.outerWidth() / 2);
+    tooltip.css('left', offsetLeft);
+    tooltip.show();
+}
+
+/**
  * Append Debug Button to Youtube controls
  */
 function renderDebugButton() {
     $('.ytp-right-controls').prepend(getDebugButtonHtml());
+}
+
+/**
+ * Append Invite Button to Youtube controls
+ */
+function renderInviteButton() {
+    $('.ytp-right-controls').prepend(getInviteButtonHtml());
+    $('#movie_player').append(`
+        <div id="grouptube-invite-tooltip" style="display:none; position: absolute; max-width: 300px; bottom: 50px; left: 969px; z-index: 1002; background-color: rgba(28,28,28,0.9); border-radius: 2px; padding: 5px 9px;font-size: 118%; font-weight: 500; line-height: 15px;">
+            Copy Invite Link
+        </div>
+    `);
 }
 
 /**

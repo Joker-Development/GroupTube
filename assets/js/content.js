@@ -263,6 +263,16 @@ socket.on('connect', () => {
                 $('*').on('focusin', function(e){
                     $("#movie_player").blur();
                 });
+
+                /**
+                 * On Focus Window, update current Video Information
+                 */
+                $(window).focus(function() {
+                    var token = getUrlParameter('grouptube_token');
+                    setTimeout(function (){
+                        socket.emit('update_current_video_status', token);
+                    }, 100);
+                });
             }else{
                 throwConsoleError(data);
             }
@@ -494,6 +504,11 @@ function createPageOverlay() {
     var leaveSessionBtnHtml = getLeaveSessionButtonHtml();
     $('body').prepend(leaveSessionBtnHtml+'<div class="grouptube-viewer-list" style="display:none;position: absolute;z-index: 1000001;background: rgba(0, 0, 0, 0.44);border-radius: 5px;width: auto;min-width: 100px;font-size: 12px;color: white;padding: 5px 10px;left: 440px;"><span>Viewers:</span><ul style="list-style: none;margin-top: 2px;"></ul></div><div class="grouptube-overlay" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:100000;background-color:rgba(0,0,0,0.8)"></div>');
     $('#player-container').css('z-index','1000000');
+    setInterval(function (){
+        if($('#player-container').css('z-index') !== '1000000'){
+            $('#player-container').css('z-index','1000000');
+        }
+    }, 1000);
 }
 
 /**

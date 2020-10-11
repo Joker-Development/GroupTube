@@ -224,10 +224,14 @@ socket.on('connect', () => {
 
                 /**
                  * Set video playback information
+                 * Only set video time if current video time is 0.5 ahead or behind host
                  */
                 socket.on('set_video_properties',function(data){
-                    setVideoTime(data.time);
                     setPlayVideo(data.isPlaying);
+                    var currentVideoTime = getVideoTime();
+                    if((currentVideoTime > (data.time + 0.5)) || (currentVideoTime < (data.time - 0.5))){
+                        setVideoTime(data.time);
+                    }
                 });
 
                 /**

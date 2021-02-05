@@ -1,4 +1,4 @@
-if grep -Fq "debug = false" assets/js/content.js
+if grep -Fq "dev_mode = false" assets/js/content.js
 then
     echo "Debug mode set correctly for this project!"
     exit 0

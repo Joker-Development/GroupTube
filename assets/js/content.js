@@ -1,12 +1,12 @@
-var debug = false;
+var dev_mode = false;
 var session_token;
 var host;
 var socket;
 
 /**
- * Debug Mode
+ * Dev Mode
  */
-if(debug){
+if(dev_mode){
     socket = io('http://localhost:3000');
 }else{
     socket = io('https://socket.grouptube.de');
@@ -15,8 +15,7 @@ if(debug){
 /**
  * Variables
  */
-var ytplayer = retrieveWindowVariables(["ytplayer"]).ytplayer;
-var user_display_name = ytplayer.config.args.user_display_name !== undefined ? ytplayer.config.args.user_display_name: 'Guest';
+var user_display_name = 'Guest';
 var viewer_list = [];
 
 /**
@@ -31,6 +30,11 @@ socket.on('connect', () => {
         displayTooltip(tooltip, $(this));
     });
 
+    $(document).on('mouseover', '#grouptube-nickname-btn', function (e) {
+        var tooltip = $('#grouptube-nickname-tooltip');
+        displayTooltip(tooltip, $(this));
+    });
+
     $(document).on('mouseover', '#grouptube-invite-btn', function (e) {
         var tooltip = $('#grouptube-invite-tooltip');
         displayTooltip(tooltip, $(this));
@@ -38,6 +42,10 @@ socket.on('connect', () => {
 
     $(document).on('mouseleave', '#grouptube-session-start', function () {
         $('#grouptube-tooltip').hide();
+    });
+
+    $(document).on('mouseleave', '#grouptube-nickname-btn', function () {
+        $('#grouptube-nickname-tooltip').hide();
     });
 
     $(document).on('mouseleave', '#grouptube-invite-btn', function () {
@@ -82,6 +90,22 @@ socket.on('connect', () => {
         leaveSession();
     });
 
+    $(document).on('click', '#grouptube-nickname-btn', function () {
+        renderNicknamePromt();
+    });
+
+    $(document).on('click', '#grouptube-nickname-promt-save', function () {
+        var nickname = $('#grouptube-nickname-input').val();
+        if(nickname){
+            storageStore('grouptubeNickname', nickname, function () {
+                user_display_name = nickname;
+                $('#grouptube-nickname-promt').remove();
+            });
+        }else{
+            addToast("Please enter a Username!");
+        }
+    });
+
     $(document).on('click', '#grouptube-debug-btn', function () {
 
     });
@@ -106,7 +130,6 @@ socket.on('connect', () => {
                 $('#grouptube-session-start').attr('disabled', 'disabled');
                 updateViewCounter(1);
                 createPageOverlay();
-                createToastContainer();
                 removeRecommendationWrapper();
                 disableAfterLoad();
                 addToViewerList(socket.id, user_display_name, true);
@@ -182,128 +205,132 @@ socket.on('connect', () => {
         });
     });
 
-    /**
-     * If opened GroupTube video URL
-     */
-    if(getUrlParameter('grouptube_token')){
-        var token = getUrlParameter('grouptube_token');
 
+    createToastContainer();
+    getNickname(function () {
         /**
-         * Join room with token
+         * If opened GroupTube video URL
          */
-        socket.emit('join_room_by_token', token, user_display_name, function(data) {
-            if (data.success) {
-                /**
-                 * Build Page
-                 */
-                viewer_list = data.viewer_list;
-                setHost();
-                setPlayVideo(false);
-                setVideoTime(0);
-                disableControls();
-                createViewCounter();
-                createPageOverlay();
-                createToastContainer();
-                removeRecommendationWrapper();
-                disableAfterLoad();
+        if(getUrlParameter('grouptube_token')){
+            var token = getUrlParameter('grouptube_token');
 
-                /**
-                 * On Toggle video play
-                 */
-                socket.on('video_toggle_play',function(status, time){
-                    setPlayVideo(status);
-                    setVideoTime(time);
-                });
-
-                /**
-                 * Set the current time of the video
-                 */
-                socket.on('video_set_time_client',function(time){
-                    setVideoTime(time);
-                });
-
-                /**
-                 * Set video playback information
-                 * Only set video time if current video time is 0.5 ahead or behind host
-                 */
-                socket.on('set_video_properties',function(data){
-                    setPlayVideo(data.isPlaying);
-                    var currentVideoTime = getVideoTime();
-                    if((currentVideoTime > (data.time + 0.5)) || (currentVideoTime < (data.time - 0.5))){
-                        setVideoTime(data.time);
-                    }
-                });
-
-                /**
-                 * Update session (View-count etc.)
-                 */
-                socket.on('update_session',function(data){
-                    updateSession(data);
-                });
-
-                /**
-                 * On Master session close, display overlay and generate URL to continue watching alone
-                 */
-                socket.on('video_close_session',function(){
+            /**
+             * Join room with token
+             */
+            socket.emit('join_room_by_token', token, user_display_name, function(data) {
+                if (data.success) {
+                    /**
+                     * Build Page
+                     */
+                    viewer_list = data.viewer_list;
+                    setHost();
                     setPlayVideo(false);
-                    var url = window.location.href;
-                    url = removeParameterFromURL(url, 'grouptube_token');
-                    url = removeParameterFromURL(url, 't');
-                    url = addParametertoURL(url, 't', ((Math.round(getVideoTime()) - 1) >= 0 ? (Math.round(getVideoTime()) - 1): 0));
-                    showVideoOverlayWithText("GroupTube Session Owner closed the video!", url);
-                    updateViewCounter("");
-                });
+                    setVideoTime(0);
+                    disableControls();
+                    createViewCounter();
+                    createPageOverlay();
+                    removeRecommendationWrapper();
+                    disableAfterLoad();
 
-                /**
-                 * On server disconnect, update view-count, pause video and show overlay
-                 */
-                socket.on('disconnect',function(data){
-                    updateViewCounter("");
-                    setPlayVideo(false);
-                    showVideoOverlayWithText('Connection to GroupTube Server lost!<br><span style="font-size: 15px;">This may be due to connection issues or the server getting updated.</span>');
-                });
+                    /**
+                     * On Toggle video play
+                     */
+                    socket.on('video_toggle_play',function(status, time){
+                        setPlayVideo(status);
+                        setVideoTime(time);
+                    });
 
-                /**
-                 * Disable all keyboard keys
-                 */
-                $('body').on('keydown', function (e) {
-                    return false;
-                });
+                    /**
+                     * Set the current time of the video
+                     */
+                    socket.on('video_set_time_client',function(time){
+                        setVideoTime(time);
+                    });
 
-                /**
-                 * Disable focus on movie_player element
-                 */
-                $('*').on('focusin', function(e){
-                    $("#movie_player").blur();
-                });
+                    /**
+                     * Set video playback information
+                     * Only set video time if current video time is 0.5 ahead or behind host
+                     */
+                    socket.on('set_video_properties',function(data){
+                        setPlayVideo(data.isPlaying);
+                        var currentVideoTime = getVideoTime();
+                        if((currentVideoTime > (data.time + 0.5)) || (currentVideoTime < (data.time - 0.5))){
+                            setVideoTime(data.time);
+                        }
+                    });
 
-                /**
-                 * On Focus Window, update current Video Information
-                 */
-                $(window).focus(function() {
-                    var token = getUrlParameter('grouptube_token');
-                    setTimeout(function (){
-                        socket.emit('update_current_video_status', token);
-                    }, 100);
-                });
-            }else{
-                throwConsoleError(data);
+                    /**
+                     * Update session (View-count etc.)
+                     */
+                    socket.on('update_session',function(data){
+                        updateSession(data);
+                    });
+
+                    /**
+                     * On Master session close, display overlay and generate URL to continue watching alone
+                     */
+                    socket.on('video_close_session',function(){
+                        setPlayVideo(false);
+                        var url = window.location.href;
+                        url = removeParameterFromURL(url, 'grouptube_token');
+                        url = removeParameterFromURL(url, 't');
+                        url = addParametertoURL(url, 't', ((Math.round(getVideoTime()) - 1) >= 0 ? (Math.round(getVideoTime()) - 1): 0));
+                        showVideoOverlayWithText("GroupTube Session Owner closed the video!", url);
+                        updateViewCounter("");
+                    });
+
+                    /**
+                     * On server disconnect, update view-count, pause video and show overlay
+                     */
+                    socket.on('disconnect',function(data){
+                        updateViewCounter("");
+                        setPlayVideo(false);
+                        showVideoOverlayWithText('Connection to GroupTube Server lost!<br><span style="font-size: 15px;">This may be due to connection issues or the server getting updated.</span>');
+                    });
+
+                    /**
+                     * Disable all keyboard keys
+                     */
+                    $('body').on('keydown', function (e) {
+                        if(e.target.id !== 'grouptube-nickname-input') return false;
+                    });
+
+                    /**
+                     * Disable focus on movie_player element
+                     */
+                    $('*').on('focusin', function(e){
+                        $("#movie_player").blur();
+                    });
+
+                    /**
+                     * On Focus Window, update current Video Information
+                     */
+                    $(window).focus(function() {
+                        var token = getUrlParameter('grouptube_token');
+                        setTimeout(function (){
+                            socket.emit('update_current_video_status', token);
+                        }, 100);
+                    });
+                }else{
+                    throwConsoleError(data);
+                }
+            });
+        }else{
+            /**
+             * Display create session button
+             */
+            if(!isLiveStream() && $('#grouptube-session-start').length === 0){
+                $('.ytp-right-controls').prepend(getButtonHtml());
+                $('#movie_player').append(getTooltipHtml());
             }
-        });
-    }else{
-        /**
-         * Display create session button
-         */
-        if(!isLiveStream() && $('#grouptube-session-start').length === 0){
-            $('.ytp-right-controls').prepend(getButtonHtml());
-            $('#movie_player').append(getTooltipHtml());
         }
-    }
+    });
+
 
     /**
-     * When debug mode is on, render debug button
+     * When dev_mode mode is on, render debug button
      */
-    if(debug){
+    if(dev_mode){
         renderDebugButton();
     }
 });
@@ -346,6 +373,19 @@ function getDebugButtonHtml(){
 }
 
 /**
+ * Get nickname button html
+ */
+function getNicknameButtonHtml(){
+    return `
+    <button id="grouptube-nickname-btn" class="ytp-subtitles-button ytp-button" aria-label="Set GroupTube Nickname" style="text-align: center;" aria-pressed="false" title="Debug GroupTube">
+        <svg aria-hidden="true" height="100%" width="60%" focusable="false" data-prefix="fas" data-icon="user-tag" class="svg-inline--fa fa-user-tag fa-w-20" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512">
+            <path fill="currentColor" d="M630.6 364.9l-90.3-90.2c-12-12-28.3-18.7-45.3-18.7h-79.3c-17.7 0-32 14.3-32 32v79.2c0 17 6.7 33.2 18.7 45.2l90.3 90.2c12.5 12.5 32.8 12.5 45.3 0l92.5-92.5c12.6-12.5 12.6-32.7.1-45.2zm-182.8-21c-13.3 0-24-10.7-24-24s10.7-24 24-24 24 10.7 24 24c0 13.2-10.7 24-24 24zm-223.8-88c70.7 0 128-57.3 128-128C352 57.3 294.7 0 224 0S96 57.3 96 128c0 70.6 57.3 127.9 128 127.9zm127.8 111.2V294c-12.2-3.6-24.9-6.2-38.2-6.2h-16.7c-22.2 10.2-46.9 16-72.9 16s-50.6-5.8-72.9-16h-16.7C60.2 287.9 0 348.1 0 422.3v41.6c0 26.5 21.5 48 48 48h352c15.5 0 29.1-7.5 37.9-18.9l-58-58c-18.1-18.1-28.1-42.2-28.1-67.9z"></path>
+        </svg>
+    </button>
+    `;
+}
+
+/**
  * Get debug button html
  */
 function getInviteButtonHtml(){
@@ -378,6 +418,17 @@ function getTooltipHtml(){
     return `
     <div id="grouptube-tooltip" style="display:none; position: absolute; max-width: 300px; bottom: 50px; left: 969px; z-index: 1002; background-color: rgba(28,28,28,0.9); border-radius: 2px; padding: 5px 9px;font-size: 118%; font-weight: 500; line-height: 15px;">
         Create GroupTube Session
+    </div>
+    `;
+}
+
+/**
+ * Get nickname tooltip html
+ */
+function getNicknameTooltipHtml(){
+    return `
+    <div id="grouptube-nickname-tooltip" style="display:none; position: absolute; max-width: 300px; bottom: 50px; left: 969px; z-index: 1002; background-color: rgba(28,28,28,0.9); border-radius: 2px; padding: 5px 9px;font-size: 118%; font-weight: 500; line-height: 15px;">
+        Set GroupTube Nickname
     </div>
     `;
 }
@@ -708,7 +759,7 @@ function throwConsoleError(data){
             showVideoOverlayWithText(data.error);
         }
     }else{
-        if(debug){
+        if(dev_mode){
             console.error("[GroupTube] Error: " + data.error);
         }
     }
@@ -821,6 +872,14 @@ function renderDebugButton() {
 }
 
 /**
+ * Append Debug Button to Youtube controls
+ */
+function renderNicknameButton() {
+    $('.ytp-right-controls').prepend(getNicknameButtonHtml());
+    $('#movie_player').append(getNicknameTooltipHtml());
+}
+
+/**
  * Append Invite Button to Youtube controls
  */
 function renderInviteButton() {
@@ -843,4 +902,49 @@ function leaveSession() {
     url = removeParameterFromURL(url, 't');
     url = addParametertoURL(url, 't', ((Math.round(getVideoTime()) - 1) >= 0 ? (Math.round(getVideoTime()) - 1): 0));
     window.location.href = url;
+}
+
+function getNickname(callback) {
+    var key = 'grouptubeNickname';
+    storageRetrieve(key, function (data) {
+        if(data[key] === undefined){
+            renderNicknamePromt();
+        }else{
+            user_display_name = data[key];
+        }
+        renderNicknameButton();
+        callback();
+    });
+}
+
+function renderNicknamePromt(){
+    $('body').prepend(`
+        <div id="grouptube-nickname-promt" style="position: fixed;top: 0;left: 0;width: 100%;height: 100%;z-index: 1100000;background-color: rgba(0,0,0,0.8);">
+            <div id="grouptube-nickname-promt-body" style="position: absolute;top: 50%;left: 50%;transform: translate(-50%, -50%);width: 25rem;height: 20rem;display: flex;flex-direction: column;align-items: center;justify-content: space-evenly;text-align: center;background: #2d2e31;border-radius: 4px;box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.28);padding: 0 24px;color: white;">
+                <h1>GroupTube Nickname</h1>
+                <input type="text" placeholder="Enter a Nickname.." id="grouptube-nickname-input" style="height: 25px;border-radius: 5px;border: none;outline: none;display: block;box-shadow: 0 0 10px 0 black;padding: 0 10px;"><small style="font-size: 11px;">Your Nickname is used to tell other People who joined their session.</small>
+                <button id="grouptube-nickname-promt-save" style="background-color: #cc0000;padding: 10px 16px;border-radius: 2px;border: none;color: white;font-weight: bold;text-transform: uppercase;font-family: 'Roboto', 'Noto', sans-serif;font-size: 13px;cursor: pointer;">Save</button>
+            </div>
+        </div>
+    `);
+}
+
+function storageStore(key, data, callback) {
+    var obj = {};
+    obj[key] = data
+    chrome.storage.sync.set(obj, function () {
+        callback();
+    });
+}
+
+function storageRetrieve(key, callback) {
+    chrome.storage.sync.get(key, function (data) {
+        callback(data);
+    });
+}
+
+function storageClear(callback){
+    chrome.storage.sync.clear(function () {
+        callback();
+    });
 }

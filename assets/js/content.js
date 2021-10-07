@@ -306,10 +306,11 @@ socket.on('connect', () => {
                          * On Focus Window, update current Video Information
                          */
                         $(window).focus(function() {
-                            var token = getUrlParameter('grouptube_token');
-                            setTimeout(function (){
-                                socket.emit('update_current_video_status', token);
-                            }, 100);
+                            if (token) {
+                                setTimeout(function (){
+                                    socket.emit('update_current_video_status', token);
+                                }, 100);
+                            }
                         });
                     }else{
                         throwConsoleError(data);

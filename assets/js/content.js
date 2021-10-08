@@ -466,6 +466,19 @@ function getToastTimesHtml() {
 }
 
 /**
+ * Get Info html for toast
+ */
+function getToastInfoHtml() {
+    return `
+    <span style="width: 25px;margin-bottom: -4px;color: deepskyblue;">
+        <svg height="100%" width="60%" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="info-circle" class="svg-inline--fa fa-info-circle fa-w-16" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+            <path fill="currentColor" d="M256 8C119.043 8 8 119.083 8 256c0 136.997 111.043 248 248 248s248-111.003 248-248C504 119.083 392.957 8 256 8zm0 110c23.196 0 42 18.804 42 42s-18.804 42-42 42-42-18.804-42-42 18.804-42 42-42zm56 254c0 6.627-5.373 12-12 12h-88c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h12v-64h-12c-6.627 0-12-5.373-12-12v-24c0-6.627 5.373-12 12-12h64c6.627 0 12 5.373 12 12v100h12c6.627 0 12 5.373 12 12v24z"></path>
+        </svg>
+    </span>
+    `;
+}
+
+/**
  * Play/pause video
  */
 function setPlayVideo(status){
@@ -508,22 +521,15 @@ function disableControls() {
     $('#movie_player, video, .ytp-progress-bar-container').css('pointer-events', 'none');
     $('.ytp-chrome-controls').css('pointer-events', 'all');
     if(host){
-        $('.ytp-left-controls').append(`
-            <div class="ytp-time-display notranslate">
-                <button style="display: block; text-transform: unset;" disabled="true" class="ytp-live-badge ytp-button">Video is controlled by `+host+`</button>
-            </div>
-        `);
+        addToast(getToastInfoHtml() + 'Video is controlled by ' + host + '.');
     }else{
-        $('.ytp-left-controls').append(`
-            <div class="ytp-time-display notranslate">
-                <button style="display: block; text-transform: unset;" disabled="true" class="ytp-live-badge ytp-button">Video is controlled by GroupTube Session Owner</button>
-            </div>
-        `);
+        addToast(getToastInfoHtml() + 'Video is controlled by GroupTube Session Owner.');
     }
 }
 
 /**
  * Set video text in control bar
+ * currently not used!
  */
 function setVideoText(text){
     var video_text = $('#grouptube-video-text');
@@ -590,10 +596,10 @@ function createPageOverlay() {
     }
     var leaveSessionBtnHtml = getLeaveSessionButtonHtml();
     $('body').prepend(leaveSessionBtnHtml+'<div class="grouptube-viewer-list" style="display:none;position: absolute;z-index: 1000001;background: rgba(0, 0, 0, 0.44);border-radius: 5px;width: auto;min-width: 100px;font-size: 12px;color: white;padding: 5px 10px;left: 440px;"><span>Viewers:</span><ul style="list-style: none;margin-top: 2px;"></ul></div><div class="grouptube-overlay" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:100000;background-color:rgba(0,0,0,0.8)"></div>');
-    $('#player-container').css('z-index','1000000');
+    $('#player #player-container').css('z-index','1000000');
     setInterval(function (){
-        if($('#player-container').css('z-index') !== '1000000'){
-            $('#player-container').css('z-index','1000000');
+        if($('#player #player-container').css('z-index') !== '1000000'){
+            $('#player #player-container').css('z-index','1000000');
         }
     }, 1000);
 }
@@ -857,7 +863,7 @@ function getVideoInviteLink(token){
     url = removeParameterFromURL(url, 'index');
     url = removeParameterFromURL(url, 't');
     navigator.clipboard.writeText(url).then(() => {
-        setVideoText("Video URL has been copied to Clipboard. Send it to your friends 🙂");
+        addToast(getToastInfoHtml() + 'Video URL has been copied to Clipboard. Send it to your friends 🙂');
     }, () => {
         prompt("Send this URL to your friends:", url);
     });

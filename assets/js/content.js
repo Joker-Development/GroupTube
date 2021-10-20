@@ -52,6 +52,12 @@ socket.on('connect', () => {
         $('#grouptube-invite-tooltip').hide();
     });
 
+    $(document).on('yt-page-data-updated', function () {
+        if (isOnVideoPage()) {
+            renderCreateSessionButton();
+        }
+    });
+
     $(document).on('click', '.ytp-fullscreen-button', function () {
         var tooltip = $('#grouptube-tooltip, #grouptube-invite-tooltip');
         if(tooltip.css('bottom') === "50px"){
@@ -318,15 +324,7 @@ socket.on('connect', () => {
                 });
             });
         }else{
-            $(document).ready(function(){
-                /**
-                 * Display create session button
-                 */
-                if(!isLiveStream() && $('#grouptube-session-start').length === 0){
-                    $('.ytp-right-controls').prepend(getButtonHtml());
-                    $('#movie_player').append(getTooltipHtml());
-                }
-            });
+            renderCreateSessionButton();
         }
     });
 
@@ -825,6 +823,13 @@ function addParametertoURL(url, parameter, value){
 }
 
 /**
+ * Check if the current url includes "watch"
+ */
+function isOnVideoPage(){
+    return location.pathname.includes('watch');
+}
+
+/**
  * Retrieve Variables from page
  */
 function retrieveWindowVariables(variables) {
@@ -905,6 +910,18 @@ function renderInviteButton() {
             Copy Invite Link
         </div>
     `);
+}
+
+/**
+ * Display create session button
+ */
+function renderCreateSessionButton(){
+    $(document).ready(function(){
+        if(!isLiveStream() && $('#grouptube-session-start').length === 0){
+            $('.ytp-right-controls').prepend(getButtonHtml());
+            $('#movie_player').append(getTooltipHtml());
+        }
+    });
 }
 
 /**

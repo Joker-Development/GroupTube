@@ -1,4 +1,4 @@
-var dev_mode = false;
+var dev_mode = true;
 var session_token;
 var host;
 var socket;
@@ -25,36 +25,24 @@ socket.on('connect', () => {
     /**
      * Hover & Click Events
      */
-    $(document).on('mouseover', '#grouptube-session-start', function (e) {
-        var tooltip = $('#grouptube-tooltip');
+    $(document).on('mouseover', '.grouptube-button', function (e) {
+        var tooltip = $('.grouptube-tooltip');
+        tooltip.text($(this).attr('title'));
         displayTooltip(tooltip, $(this));
     });
 
-    $(document).on('mouseover', '#grouptube-nickname-btn', function (e) {
-        var tooltip = $('#grouptube-nickname-tooltip');
-        displayTooltip(tooltip, $(this));
+    $(document).on('mouseleave', '.grouptube-button', function () {
+        $('.grouptube-tooltip').hide();
     });
 
-    $(document).on('mouseover', '#grouptube-invite-btn', function (e) {
-        var tooltip = $('#grouptube-invite-tooltip');
-        displayTooltip(tooltip, $(this));
-    });
-
-    $(document).on('mouseleave', '#grouptube-session-start', function () {
-        $('#grouptube-tooltip').hide();
-    });
-
-    $(document).on('mouseleave', '#grouptube-nickname-btn', function () {
-        $('#grouptube-nickname-tooltip').hide();
-    });
-
-    $(document).on('mouseleave', '#grouptube-invite-btn', function () {
-        $('#grouptube-invite-tooltip').hide();
+    $(document).on('click', '.grouptube-button', function () {
+        $('.grouptube-tooltip').hide();
     });
 
     $(document).on('yt-page-data-updated', function () {
         if (isOnVideoPage()) {
             renderCreateSessionButton();
+            renderTooltip();
         }
     });
 
@@ -84,7 +72,6 @@ socket.on('connect', () => {
 
     $(document).on('click', '#grouptube-invite-btn', function () {
         getVideoInviteLink(session_token);
-        $('#grouptube-invite-tooltip').hide();
         var invite_btn = $(this);
         invite_btn.attr('disabled', 'disabled');
         setTimeout(function (){
@@ -120,7 +107,6 @@ socket.on('connect', () => {
      * Click Event for starting a session
      */
     $(document).on('click', '#grouptube-session-start', function () {
-        $('#grouptube-tooltip').hide();
         socket.emit('create_session', chrome.runtime, function (data) {
             if(data.success){
                 /**
@@ -203,7 +189,7 @@ socket.on('connect', () => {
                 /**
                  * Build view-counter
                  */
-                renderInviteButton();
+                renderGrouptubeButton(getInviteButtonHtml());
                 createViewCounter();
             }else{
                 throwConsoleError(data);
@@ -325,6 +311,7 @@ socket.on('connect', () => {
             });
         }else{
             renderCreateSessionButton();
+            renderTooltip();
         }
     });
 
@@ -334,7 +321,7 @@ socket.on('connect', () => {
      */
     if(dev_mode){
         $(document).ready(function(){
-            renderDebugButton();
+            renderGrouptubeButton(getDebugButtonHtml());
         });
     }
 });
@@ -355,7 +342,7 @@ function getUrlParameter(name) {
  */
 function getButtonHtml(){
     return `
-    <button id="grouptube-session-start" class="ytp-subtitles-button ytp-button" aria-label="Start a GroupTube Session" style="text-align: center;" aria-pressed="false" title="Start a GroupTube Session">
+    <button id="grouptube-session-start" class="ytp-subtitles-button ytp-button grouptube-button" aria-label="Start a GroupTube Session" style="text-align: center;" aria-pressed="false" title="Start a GroupTube Session">
         <svg aria-hidden="true" height="100%" width="60%" focusable="false" data-prefix="fas" data-icon="users" class="svg-inline--fa fa-users fa-w-20" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512">
             <path fill="currentColor" d="M96 224c35.3 0 64-28.7 64-64s-28.7-64-64-64-64 28.7-64 64 28.7 64 64 64zm448 0c35.3 0 64-28.7 64-64s-28.7-64-64-64-64 28.7-64 64 28.7 64 64 64zm32 32h-64c-17.6 0-33.5 7.1-45.1 18.6 40.3 22.1 68.9 62 75.1 109.4h66c17.7 0 32-14.3 32-32v-32c0-35.3-28.7-64-64-64zm-256 0c61.9 0 112-50.1 112-112S381.9 32 320 32 208 82.1 208 144s50.1 112 112 112zm76.8 32h-8.3c-20.8 10-43.9 16-68.5 16s-47.6-6-68.5-16h-8.3C179.6 288 128 339.6 128 403.2V432c0 26.5 21.5 48 48 48h288c26.5 0 48-21.5 48-48v-28.8c0-63.6-51.6-115.2-115.2-115.2zm-223.7-13.4C161.5 263.1 145.6 256 128 256H64c-35.3 0-64 28.7-64 64v32c0 17.7 14.3 32 32 32h65.9c6.3-47.4 34.9-87.3 75.2-109.4z"></path>
         </svg>
@@ -368,7 +355,7 @@ function getButtonHtml(){
  */
 function getDebugButtonHtml(){
     return `
-    <button id="grouptube-debug-btn" class="ytp-subtitles-button ytp-button" aria-label="Debug GroupTube" style="text-align: center;" aria-pressed="false" title="Debug GroupTube">
+    <button id="grouptube-debug-btn" class="ytp-subtitles-button ytp-button grouptube-button" aria-label="Debug GroupTube" style="text-align: center;" aria-pressed="false" title="Debug GroupTube">
         <svg aria-hidden="true" height="100%" width="60%" focusable="false" data-prefix="fas" data-icon="bug" class="svg-inline--fa fa-bug fa-w-16" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
             <path fill="currentColor" d="M511.988 288.9c-.478 17.43-15.217 31.1-32.653 31.1H424v16c0 21.864-4.882 42.584-13.6 61.145l60.228 60.228c12.496 12.497 12.496 32.758 0 45.255-12.498 12.497-32.759 12.496-45.256 0l-54.736-54.736C345.886 467.965 314.351 480 280 480V236c0-6.627-5.373-12-12-12h-24c-6.627 0-12 5.373-12 12v244c-34.351 0-65.886-12.035-90.636-32.108l-54.736 54.736c-12.498 12.497-32.759 12.496-45.256 0-12.496-12.497-12.496-32.758 0-45.255l60.228-60.228C92.882 378.584 88 357.864 88 336v-16H32.666C15.23 320 .491 306.33.013 288.9-.484 270.816 14.028 256 32 256h56v-58.745l-46.628-46.628c-12.496-12.497-12.496-32.758 0-45.255 12.498-12.497 32.758-12.497 45.256 0L141.255 160h229.489l54.627-54.627c12.498-12.497 32.758-12.497 45.256 0 12.496 12.497 12.496 32.758 0 45.255L424 197.255V256h56c17.972 0 32.484 14.816 31.988 32.9zM257 0c-61.856 0-112 50.144-112 112h224C369 50.144 318.856 0 257 0z"></path>
         </svg>
@@ -381,7 +368,7 @@ function getDebugButtonHtml(){
  */
 function getNicknameButtonHtml(){
     return `
-    <button id="grouptube-nickname-btn" class="ytp-subtitles-button ytp-button" aria-label="Set GroupTube Nickname" style="text-align: center;" aria-pressed="false" title="Debug GroupTube">
+    <button id="grouptube-nickname-btn" class="ytp-subtitles-button ytp-button grouptube-button" aria-label="Set GroupTube Nickname" style="text-align: center;" aria-pressed="false" title="Set GroupTube Nickname">
         <svg aria-hidden="true" height="100%" width="60%" focusable="false" data-prefix="fas" data-icon="user-tag" class="svg-inline--fa fa-user-tag fa-w-20" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512">
             <path fill="currentColor" d="M630.6 364.9l-90.3-90.2c-12-12-28.3-18.7-45.3-18.7h-79.3c-17.7 0-32 14.3-32 32v79.2c0 17 6.7 33.2 18.7 45.2l90.3 90.2c12.5 12.5 32.8 12.5 45.3 0l92.5-92.5c12.6-12.5 12.6-32.7.1-45.2zm-182.8-21c-13.3 0-24-10.7-24-24s10.7-24 24-24 24 10.7 24 24c0 13.2-10.7 24-24 24zm-223.8-88c70.7 0 128-57.3 128-128C352 57.3 294.7 0 224 0S96 57.3 96 128c0 70.6 57.3 127.9 128 127.9zm127.8 111.2V294c-12.2-3.6-24.9-6.2-38.2-6.2h-16.7c-22.2 10.2-46.9 16-72.9 16s-50.6-5.8-72.9-16h-16.7C60.2 287.9 0 348.1 0 422.3v41.6c0 26.5 21.5 48 48 48h352c15.5 0 29.1-7.5 37.9-18.9l-58-58c-18.1-18.1-28.1-42.2-28.1-67.9z"></path>
         </svg>
@@ -394,7 +381,7 @@ function getNicknameButtonHtml(){
  */
 function getInviteButtonHtml(){
     return `
-    <button id="grouptube-invite-btn" class="ytp-subtitles-button ytp-button" aria-label="Copy invite link" style="text-align: center;" aria-pressed="false" title="Copy invite link">
+    <button id="grouptube-invite-btn" class="ytp-subtitles-button ytp-button grouptube-button" aria-label="Copy invite link" style="text-align: center;" aria-pressed="false" title="Copy invite link">
         <svg aria-hidden="true" height="100%" width="50%" focusable="false" data-prefix="fas" data-icon="user-plus" class="svg-inline--fa fa-user-plus fa-w-20" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512">
             <path fill="currentColor" d="M624 208h-64v-64c0-8.8-7.2-16-16-16h-32c-8.8 0-16 7.2-16 16v64h-64c-8.8 0-16 7.2-16 16v32c0 8.8 7.2 16 16 16h64v64c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16v-64h64c8.8 0 16-7.2 16-16v-32c0-8.8-7.2-16-16-16zm-400 48c70.7 0 128-57.3 128-128S294.7 0 224 0 96 57.3 96 128s57.3 128 128 128zm89.6 32h-16.7c-22.2 10.2-46.9 16-72.9 16s-50.6-5.8-72.9-16h-16.7C60.2 288 0 348.2 0 422.4V464c0 26.5 21.5 48 48 48h352c26.5 0 48-21.5 48-48v-41.6c0-74.2-60.2-134.4-134.4-134.4z"></path>
         </svg>
@@ -420,21 +407,19 @@ function getLeaveSessionButtonHtml() {
  */
 function getTooltipHtml(){
     return `
-    <div id="grouptube-tooltip" style="display:none; position: absolute; max-width: 300px; bottom: 50px; left: 969px; z-index: 1002; background-color: rgba(28,28,28,0.9); border-radius: 2px; padding: 5px 9px;font-size: 118%; font-weight: 500; line-height: 15px;">
-        Create GroupTube Session
+    <div class="grouptube-tooltip" style="display:none; position: absolute; max-width: 300px; bottom: 50px; left: 969px; z-index: 1002; background-color: rgba(28,28,28,0.9); border-radius: 2px; padding: 5px 9px;font-size: 118%; font-weight: 500; line-height: 15px;">
+        Deafult Text
     </div>
     `;
 }
 
 /**
- * Get nickname tooltip html
+ * Render tooltip
  */
-function getNicknameTooltipHtml(){
-    return `
-    <div id="grouptube-nickname-tooltip" style="display:none; position: absolute; max-width: 300px; bottom: 50px; left: 969px; z-index: 1002; background-color: rgba(28,28,28,0.9); border-radius: 2px; padding: 5px 9px;font-size: 118%; font-weight: 500; line-height: 15px;">
-        Set GroupTube Nickname
-    </div>
-    `;
+function renderTooltip() {
+    if($('.grouptube-tooltip').length === 0){
+        $('#movie_player').append(getTooltipHtml());
+    }
 }
 
 /**
@@ -884,44 +869,21 @@ function displayTooltip(tooltip, element){
 }
 
 /**
- * Append Debug Button to Youtube controls
- */
-function renderDebugButton() {
-    $('.ytp-right-controls').prepend(getDebugButtonHtml());
-}
-
-/**
- * Append Debug Button to Youtube controls
- */
-function renderNicknameButton() {
-    $(document).ready(function(){
-        $('.ytp-right-controls').prepend(getNicknameButtonHtml());
-        $('#movie_player').append(getNicknameTooltipHtml());
-    });
-}
-
-/**
- * Append Invite Button to Youtube controls
- */
-function renderInviteButton() {
-    $('.ytp-right-controls').prepend(getInviteButtonHtml());
-    $('#movie_player').append(`
-        <div id="grouptube-invite-tooltip" style="display:none; position: absolute; max-width: 300px; bottom: 50px; left: 969px; z-index: 1002; background-color: rgba(28,28,28,0.9); border-radius: 2px; padding: 5px 9px;font-size: 118%; font-weight: 500; line-height: 15px;">
-            Copy Invite Link
-        </div>
-    `);
-}
-
-/**
  * Display create session button
  */
-function renderCreateSessionButton(){
+function renderCreateSessionButton() {
     $(document).ready(function(){
         if(!isLiveStream() && $('#grouptube-session-start').length === 0){
-            $('.ytp-right-controls').prepend(getButtonHtml());
-            $('#movie_player').append(getTooltipHtml());
+            renderGrouptubeButton(getButtonHtml());
         }
     });
+}
+
+/**
+ * Render a default button in the controls pane with the given html
+ */
+function renderGrouptubeButton(html) {
+    $('.ytp-right-controls').prepend(html);
 }
 
 /**
@@ -945,7 +907,9 @@ function getNickname(callback) {
         }else{
             user_display_name = data[key];
         }
-        renderNicknameButton();
+        $(document).ready(function(){
+            renderGrouptubeButton(getNicknameButtonHtml());
+        });
         callback();
     });
 }

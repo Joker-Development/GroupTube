@@ -1,4 +1,4 @@
-var dev_mode = true;
+var dev_mode = false;
 var session_token;
 var host;
 var socket;
@@ -25,6 +25,8 @@ socket.on('connect', () => {
     /**
      * Hover & Click Events
      */
+
+    // Tooltip
     $(document).on('mouseover', '.grouptube-button', function (e) {
         var tooltip = $('.grouptube-tooltip');
         tooltip.text($(this).attr('title'));
@@ -39,6 +41,7 @@ socket.on('connect', () => {
         $('.grouptube-tooltip').hide();
     });
 
+    // YT Page Updates
     $(document).on('yt-page-data-updated', function () {
         if (isOnVideoPage()) {
             renderCreateSessionButton();
@@ -46,6 +49,7 @@ socket.on('connect', () => {
         }
     });
 
+    // Fullscreen Mode
     $(document).on('click', '.ytp-fullscreen-button', function () {
         var tooltip = $('#grouptube-tooltip, #grouptube-invite-tooltip');
         if(tooltip.css('bottom') === "50px"){
@@ -60,16 +64,18 @@ socket.on('connect', () => {
         $('.grouptube-viewer-list').hide();
     });
 
+    // Viewcounter
     $(document).on('click', '#grouptube-viewcounter', function () {
         var viewer_list_el = $('.grouptube-viewer-list');
         var leftPos = $(this).offset().left - viewer_list_el.css('width').replace(/[^-\d\.]/g, '')/2;
-        var topPos = $(this).offset().top - viewer_list_el.css('height').replace(/[^-\d\.]/g, '') - 15;
+        // var topPos = $(this).offset().top - viewer_list_el.css('height').replace(/[^-\d\.]/g, '') - 15;
         var bottomPos = window.innerHeight - $(this).offset().top + 15;
         viewer_list_el.css('left', leftPos + 'px');
         viewer_list_el.css('bottom', bottomPos + 'px');
         viewer_list_el.toggle();
     });
 
+    // Invite Link
     $(document).on('click', '#grouptube-invite-btn', function () {
         getVideoInviteLink(session_token);
         var invite_btn = $(this);
@@ -83,6 +89,7 @@ socket.on('connect', () => {
         leaveSession();
     });
 
+    // Change Nickname
     $(document).on('click', '#grouptube-nickname-btn', function () {
         renderNicknamePromt();
     });
@@ -99,6 +106,7 @@ socket.on('connect', () => {
         }
     });
 
+    // Debug
     $(document).on('click', '#grouptube-debug-btn', function () {
 
     });
@@ -197,8 +205,10 @@ socket.on('connect', () => {
         });
     });
 
-
+    // Toast Container
     createToastContainer();
+
+    // Fetch Nickname & check for token in URL
     getNickname(function () {
         /**
          * If opened GroupTube video URL
@@ -340,7 +350,7 @@ function getUrlParameter(name) {
 /**
  * Get button html
  */
-function getButtonHtml(){
+function getCreateSessionButtonHtml(){
     return `
     <button id="grouptube-session-start" class="ytp-subtitles-button ytp-button grouptube-button" aria-label="Start a GroupTube Session" style="text-align: center;" aria-pressed="false" title="Start a GroupTube Session">
         <svg aria-hidden="true" height="100%" width="60%" focusable="false" data-prefix="fas" data-icon="users" class="svg-inline--fa fa-users fa-w-20" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512">
@@ -874,7 +884,7 @@ function displayTooltip(tooltip, element){
 function renderCreateSessionButton() {
     $(document).ready(function(){
         if(!isLiveStream() && $('#grouptube-session-start').length === 0){
-            renderGrouptubeButton(getButtonHtml());
+            renderGrouptubeButton(getCreateSessionButtonHtml());
         }
     });
 }

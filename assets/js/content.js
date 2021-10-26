@@ -17,6 +17,7 @@ if(dev_mode){
  */
 var user_display_name = 'Guest';
 var viewer_list = [];
+var allow_markers = false
 
 /**
  * If Socket has successfully connected, continue with code
@@ -84,7 +85,56 @@ socket.on('connect', () => {
             invite_btn.removeAttr('disabled');
         }, 5000);
     });
+    
+    // On Right click, disable context menu & set marker if allowed
+    $(document).on('contextmenu', '#ytd-player', function(e) {
+        if (allow_markers) {
+            if (e.pageY < $('.ytp-chrome-bottom').offset().top) {
+                var offset = $('video').offset();
+                var videoWidth = $('video').outerWidth();
+                var videoHeight = $('video').outerHeight();
 
+                var videoPosX = e.pageX - offset.left;
+                var videoPosY = e.pageY - offset.top;
+
+                var posRelX = videoPosX / videoWidth;
+                var posRelY = videoPosY / videoHeight;
+
+                socket.emit('set_marker_server', session_token, user_display_name, posRelX, posRelY, function (data) {
+                    if(!data.success){
+                        throwConsoleError(data);
+                    }
+                });
+            }
+        }
+        return false;
+    });
+
+    // Open Settings Menu
+    $(document).on('click', '#grouptube-settings-button', function () {
+        renderSettingsPromt();
+    });
+
+    // Save Settings
+    $(document).on('click', '#grouptube-settings-save', function() {
+        // Allow Markers
+        var doAllowMarkers = $('#grouptube-allow-markers').prop('checked');
+        socket.emit('toggle_allow_markers_server', session_token, doAllowMarkers, function (data) {
+            if(!data.success){
+                throwConsoleError(data);
+            }
+        });
+
+        // Close Settings Menu
+        $('#grouptube-settings').remove();
+    });
+
+    // Help Toast for markers
+    $(document).on('click', '#grouptube-marker-help', function () {
+        addToast(getToastInfoHtml() + ' Allowing this, will let users place markers on the video using right click!', 4000);
+    });
+
+    // Leave Session
     $(document).on('click', '#grouptube-session-leave', function () {
         leaveSession();
     });
@@ -197,6 +247,7 @@ socket.on('connect', () => {
                 /**
                  * Build view-counter
                  */
+                renderGrouptubeButton(getSettingsButtonHtml());
                 renderGrouptubeButton(getInviteButtonHtml());
                 createViewCounter();
             }else{
@@ -215,6 +266,7 @@ socket.on('connect', () => {
          */
         if(getUrlParameter('grouptube_token')){
             var token = getUrlParameter('grouptube_token');
+            session_token = token;
             $(document).ready(function(){
                 /**
                  * Join room with token
@@ -228,6 +280,7 @@ socket.on('connect', () => {
                         setHost();
                         setPlayVideo(false);
                         setVideoTime(0);
+                        setAllowMarkers(data.allow_markers, true);
                         disableControls();
                         createViewCounter();
                         createPageOverlay();
@@ -323,6 +376,33 @@ socket.on('connect', () => {
             renderCreateSessionButton();
             renderTooltip();
         }
+
+        /**
+         * On Toggle 'allow_markers'
+         */
+        socket.on('toggle_allow_markers', function(status, isHost){
+            setAllowMarkers(status, false, isHost);
+        });
+
+        /**
+         * Render Marker on Video
+         */
+        socket.on('set_marker', function(name, posRelX, posRelY){
+            var offset = $('video').offset();
+            var videoWidth = $('video').outerWidth();
+            var videoHeight = $('video').outerHeight();
+
+            var posX = (videoWidth * posRelX) + offset.left;
+            var posY = (videoHeight * posRelY) + offset.top;
+
+            var marker_element = $(getMarkerHtml(name)).prependTo('body');
+            marker_element.offset({top: posY, left: (posX - marker_element.outerWidth())})
+            setTimeout(function(){
+                marker_element.fadeOut('fast', function(){
+                    marker_element.remove();
+                });
+            }, 1000)
+        });
     });
 
 
@@ -394,6 +474,19 @@ function getInviteButtonHtml(){
     <button id="grouptube-invite-btn" class="ytp-subtitles-button ytp-button grouptube-button" aria-label="Copy invite link" style="text-align: center;" aria-pressed="false" title="Copy invite link">
         <svg aria-hidden="true" height="100%" width="50%" focusable="false" data-prefix="fas" data-icon="user-plus" class="svg-inline--fa fa-user-plus fa-w-20" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512">
             <path fill="currentColor" d="M624 208h-64v-64c0-8.8-7.2-16-16-16h-32c-8.8 0-16 7.2-16 16v64h-64c-8.8 0-16 7.2-16 16v32c0 8.8 7.2 16 16 16h64v64c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16v-64h64c8.8 0 16-7.2 16-16v-32c0-8.8-7.2-16-16-16zm-400 48c70.7 0 128-57.3 128-128S294.7 0 224 0 96 57.3 96 128s57.3 128 128 128zm89.6 32h-16.7c-22.2 10.2-46.9 16-72.9 16s-50.6-5.8-72.9-16h-16.7C60.2 288 0 348.2 0 422.4V464c0 26.5 21.5 48 48 48h352c26.5 0 48-21.5 48-48v-41.6c0-74.2-60.2-134.4-134.4-134.4z"></path>
+        </svg>
+    </button>
+    `;
+}
+
+/**
+ * Get settings button html
+ */
+function getSettingsButtonHtml(){
+    return `
+    <button id="grouptube-settings-button" class="ytp-subtitles-button ytp-button grouptube-button" aria-label="Grouptube Session Settings" style="text-align: center;" aria-pressed="false" title="Grouptube Session Settings">
+        <svg aria-hidden="true" height="100%" width="50%" focusable="false" data-prefix="fas" data-icon="users-cog" class="svg-inline--fa fa-users-cog fa-w-20" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512">
+            <path fill="currentColor" d="M610.5 341.3c2.6-14.1 2.6-28.5 0-42.6l25.8-14.9c3-1.7 4.3-5.2 3.3-8.5-6.7-21.6-18.2-41.2-33.2-57.4-2.3-2.5-6-3.1-9-1.4l-25.8 14.9c-10.9-9.3-23.4-16.5-36.9-21.3v-29.8c0-3.4-2.4-6.4-5.7-7.1-22.3-5-45-4.8-66.2 0-3.3.7-5.7 3.7-5.7 7.1v29.8c-13.5 4.8-26 12-36.9 21.3l-25.8-14.9c-2.9-1.7-6.7-1.1-9 1.4-15 16.2-26.5 35.8-33.2 57.4-1 3.3.4 6.8 3.3 8.5l25.8 14.9c-2.6 14.1-2.6 28.5 0 42.6l-25.8 14.9c-3 1.7-4.3 5.2-3.3 8.5 6.7 21.6 18.2 41.1 33.2 57.4 2.3 2.5 6 3.1 9 1.4l25.8-14.9c10.9 9.3 23.4 16.5 36.9 21.3v29.8c0 3.4 2.4 6.4 5.7 7.1 22.3 5 45 4.8 66.2 0 3.3-.7 5.7-3.7 5.7-7.1v-29.8c13.5-4.8 26-12 36.9-21.3l25.8 14.9c2.9 1.7 6.7 1.1 9-1.4 15-16.2 26.5-35.8 33.2-57.4 1-3.3-.4-6.8-3.3-8.5l-25.8-14.9zM496 368.5c-26.8 0-48.5-21.8-48.5-48.5s21.8-48.5 48.5-48.5 48.5 21.8 48.5 48.5-21.7 48.5-48.5 48.5zM96 224c35.3 0 64-28.7 64-64s-28.7-64-64-64-64 28.7-64 64 28.7 64 64 64zm224 32c1.9 0 3.7-.5 5.6-.6 8.3-21.7 20.5-42.1 36.3-59.2 7.4-8 17.9-12.6 28.9-12.6 6.9 0 13.7 1.8 19.6 5.3l7.9 4.6c.8-.5 1.6-.9 2.4-1.4 7-14.6 11.2-30.8 11.2-48 0-61.9-50.1-112-112-112S208 82.1 208 144c0 61.9 50.1 112 112 112zm105.2 194.5c-2.3-1.2-4.6-2.6-6.8-3.9-8.2 4.8-15.3 9.8-27.5 9.8-10.9 0-21.4-4.6-28.9-12.6-18.3-19.8-32.3-43.9-40.2-69.6-10.7-34.5 24.9-49.7 25.8-50.3-.1-2.6-.1-5.2 0-7.8l-7.9-4.6c-3.8-2.2-7-5-9.8-8.1-3.3.2-6.5.6-9.8.6-24.6 0-47.6-6-68.5-16h-8.3C179.6 288 128 339.6 128 403.2V432c0 26.5 21.5 48 48 48h255.4c-3.7-6-6.2-12.8-6.2-20.3v-9.2zM173.1 274.6C161.5 263.1 145.6 256 128 256H64c-35.3 0-64 28.7-64 64v32c0 17.7 14.3 32 32 32h65.9c6.3-47.4 34.9-87.3 75.2-109.4z"></path>
         </svg>
     </button>
     `;
@@ -472,6 +565,23 @@ function getToastInfoHtml() {
 }
 
 /**
+ * Get Marker Html
+ */
+function getMarkerHtml(name) {
+    if (!name) name = 'Guest';
+    return `
+    <div class="grouptube-video-marker" style="position: absolute;z-index: 1000001;width: 40px;color: #4343fd;">
+        <svg aria-hidden="true" focusable="false" data-prefix="fas" data-icon="location-arrow" class="svg-inline--fa fa-location-arrow fa-w-16" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" style="filter: drop-shadow(3px 3px 1px rgb(0 0 0 / .5));">
+            <path fill="currentColor" d="M444.52 3.52L28.74 195.42c-47.97 22.39-31.98 92.75 19.19 92.75h175.91v175.91c0 51.17 70.36 67.17 92.75 19.19l191.9-415.78c15.99-38.39-25.59-79.97-63.97-63.97z"></path>
+        </svg>
+        <span style="background: #00000059;display: block;text-align: center;font-size: 11px;margin: 8px 0;padding: 3px 0;border-radius: 4px;color: white;">
+            `+name+`
+        </span>
+    </div>
+    `;
+}
+
+/**
  * Play/pause video
  */
 function setPlayVideo(status){
@@ -539,6 +649,24 @@ function setVideoText(text){
             element.remove();
         });
     }, 5000);
+}
+
+/**
+ * Set the 'allow_markers' value & display notification
+ */
+function setAllowMarkers(status, onJoin, isHost){
+    if(!onJoin) onJoin = false;
+    if(!isHost) isHost = false;
+    allow_markers = status
+    if (!isHost) {
+        if (allow_markers) {
+            addToast(getToastInfoHtml() + 'The host enabled Video Markers! You may place them on the video using right click!', 5000);
+        }else{
+            if (!onJoin) {
+                addToast(getToastInfoHtml() + 'The host disabled Video Markers! You may no longer place markers!', 2000);
+            }
+        }
+    }
 }
 
 /**
@@ -932,6 +1060,31 @@ function renderNicknamePromt(){
                     <h1>GroupTube Nickname</h1>
                     <input type="text" placeholder="Enter a Nickname.." id="grouptube-nickname-input" style="height: 25px;border-radius: 5px;border: none;outline: none;display: block;box-shadow: 0 0 10px 0 black;padding: 0 10px;"><small style="font-size: 11px;">Your Nickname is used to tell other People who joined their session.</small>
                     <button id="grouptube-nickname-promt-save" style="background-color: #cc0000;padding: 10px 16px;border-radius: 2px;border: none;color: white;font-weight: bold;text-transform: uppercase;font-family: 'Roboto', 'Noto', sans-serif;font-size: 13px;cursor: pointer;">Save</button>
+                </div>
+            </div>
+        `);
+    });
+}
+
+function renderSettingsPromt() {
+    $(document).ready(function() {
+        $('body').prepend(`
+            <div id="grouptube-settings" style="position: fixed;top: 0;left: 0;width: 100%;height: 100%;z-index: 1100000;background-color: rgba(0,0,0,0.8);">
+                <div id="grouptube-settings-body" style="position: absolute;top: 50%;left: 50%;transform: translate(-50%, -50%);width: 30rem;height: 25rem;display: flex;flex-direction: column;align-items: center;justify-content: space-evenly;text-align: center;background: #2d2e31;border-radius: 4px;box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.28);padding: 0 24px;color: white;">
+                    <h1>GroupTube Settings</h1>
+                    
+                    <div style="font-size: 14px;">
+                        <div style="display: block;">
+                            <label for="grouptube-allow-markers">
+                                <input id="grouptube-allow-markers" type="checkbox" style="position: relative;vertical-align: middle;bottom: 1px;" `+(allow_markers ? 'checked' : '')+`>
+                                Video Markers
+                            </label>
+                            <svg id="grouptube-marker-help" height="12" width="12" style="cursor: pointer;" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="question-circle" class="svg-inline--fa fa-question-circle fa-w-16" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path fill="currentColor" d="M504 256c0 136.997-111.043 248-248 248S8 392.997 8 256C8 119.083 119.043 8 256 8s248 111.083 248 248zM262.655 90c-54.497 0-89.255 22.957-116.549 63.758-3.536 5.286-2.353 12.415 2.715 16.258l34.699 26.31c5.205 3.947 12.621 3.008 16.665-2.122 17.864-22.658 30.113-35.797 57.303-35.797 20.429 0 45.698 13.148 45.698 32.958 0 14.976-12.363 22.667-32.534 33.976C247.128 238.528 216 254.941 216 296v4c0 6.627 5.373 12 12 12h56c6.627 0 12-5.373 12-12v-1.333c0-28.462 83.186-29.647 83.186-106.667 0-58.002-60.165-102-116.531-102zM256 338c-25.365 0-46 20.635-46 46 0 25.364 20.635 46 46 46s46-20.636 46-46c0-25.365-20.635-46-46-46z"></path></svg>
+                        </div>
+                        <small style="font-size: 12px;">Allow joined users to place markers on the video.</small>
+                      </div>
+
+                    <button id="grouptube-settings-save" style="background-color: #cc0000;padding: 10px 16px;border-radius: 2px;border: none;color: white;font-weight: bold;text-transform: uppercase;font-family: 'Roboto', 'Noto', sans-serif;font-size: 13px;cursor: pointer;">Save</button>
                 </div>
             </div>
         `);

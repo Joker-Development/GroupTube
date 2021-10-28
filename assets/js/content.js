@@ -1,4 +1,4 @@
-var dev_mode = false;
+var dev_mode = true;
 var session_token;
 var host;
 var socket;
@@ -18,6 +18,7 @@ if(dev_mode){
 var user_display_name = 'Guest';
 var viewer_list = [];
 var allow_markers = false
+var markerColor = getRandomMarkerColor();
 
 /**
  * If Socket has successfully connected, continue with code
@@ -100,13 +101,18 @@ socket.on('connect', () => {
                 var posRelX = videoPosX / videoWidth;
                 var posRelY = videoPosY / videoHeight;
 
-                socket.emit('set_marker_server', session_token, user_display_name, posRelX, posRelY, function (data) {
+                socket.emit('set_marker_server', session_token, user_display_name, posRelX, posRelY, markerColor, function (data) {
                     if(!data.success){
                         throwConsoleError(data);
                     }
                 });
             }
         }
+        return false;
+    });
+
+    // Disable right click on a marker
+    $(document).on('contextmenu', '.grouptube-video-marker', function() {
         return false;
     });
 
@@ -144,6 +150,7 @@ socket.on('connect', () => {
         renderNicknamePromt();
     });
 
+    // Save Nickname
     $(document).on('click', '#grouptube-nickname-promt-save', function () {
         var nickname = $('#grouptube-nickname-input').val();
         if(nickname){
@@ -387,15 +394,16 @@ socket.on('connect', () => {
         /**
          * Render Marker on Video
          */
-        socket.on('set_marker', function(name, posRelX, posRelY){
+        socket.on('set_marker', function(name, posRelX, posRelY, color){
+            if (!color) color = getRandomMarkerColor();
             var offset = $('video').offset();
             var videoWidth = $('video').outerWidth();
             var videoHeight = $('video').outerHeight();
 
             var posX = (videoWidth * posRelX) + offset.left;
             var posY = (videoHeight * posRelY) + offset.top;
-
-            var marker_element = $(getMarkerHtml(name)).prependTo('body');
+            
+            var marker_element = $(getMarkerHtml(name, color)).prependTo('body');
             marker_element.offset({top: posY, left: (posX - marker_element.outerWidth())})
             setTimeout(function(){
                 marker_element.fadeOut('fast', function(){
@@ -567,10 +575,10 @@ function getToastInfoHtml() {
 /**
  * Get Marker Html
  */
-function getMarkerHtml(name) {
+function getMarkerHtml(name, color) {
     if (!name) name = 'Guest';
     return `
-    <div class="grouptube-video-marker" style="position: absolute;z-index: 1000001;width: 40px;color: #4343fd;">
+    <div class="grouptube-video-marker" style="position: absolute;z-index: 1000001;width: 40px;color: ` + color + `;">
         <svg aria-hidden="true" focusable="false" data-prefix="fas" data-icon="location-arrow" class="svg-inline--fa fa-location-arrow fa-w-16" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" style="filter: drop-shadow(3px 3px 1px rgb(0 0 0 / .5));">
             <path fill="currentColor" d="M444.52 3.52L28.74 195.42c-47.97 22.39-31.98 92.75 19.19 92.75h175.91v175.91c0 51.17 70.36 67.17 92.75 19.19l191.9-415.78c15.99-38.39-25.59-79.97-63.97-63.97z"></path>
         </svg>
@@ -1089,6 +1097,11 @@ function renderSettingsPromt() {
             </div>
         `);
     });
+}
+
+function getRandomMarkerColor() {
+    let hue = Math.floor(Math.random() * 360);
+    return "hsl(" + hue + "deg 20% 45%)";
 }
 
 function storageStore(key, data, callback) {

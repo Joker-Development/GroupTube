@@ -1,4 +1,4 @@
-var dev_mode = true;
+var dev_mode = false;
 var session_token;
 var host;
 var socket;

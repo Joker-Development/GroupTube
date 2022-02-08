@@ -1,6 +1,4 @@
 var dev_mode = false;
-var session_token;
-var host;
 var socket;
 
 /**
@@ -18,6 +16,10 @@ if(dev_mode){
 var user_display_name = 'Guest';
 var viewer_list = [];
 var allow_markers = false
+var debug_log = false
+var session_token;
+var host;
+var is_host;
 var markerColor = getRandomMarkerColor();
 
 /**
@@ -75,6 +77,7 @@ socket.on('connect', () => {
         viewer_list_el.css('left', leftPos + 'px');
         viewer_list_el.css('bottom', bottomPos + 'px');
         viewer_list_el.toggle();
+        debugLog('Toggle Viewer List...');
     });
 
     // Invite Link
@@ -85,8 +88,9 @@ socket.on('connect', () => {
         setTimeout(function (){
             invite_btn.removeAttr('disabled');
         }, 5000);
+        debugLog('Copy Invite Link to Clipboard...');
     });
-    
+
     // On Right click, disable context menu & set marker if allowed
     $(document).on('contextmenu', '#ytd-player', function(e) {
         if (allow_markers) {
@@ -106,6 +110,7 @@ socket.on('connect', () => {
                         throwConsoleError(data);
                     }
                 });
+                debugLog('Tell Server to set marker...');
             }
         }
         return false;
@@ -125,24 +130,35 @@ socket.on('connect', () => {
     $(document).on('click', '#grouptube-settings-save', function() {
         // Allow Markers
         var doAllowMarkers = $('#grouptube-allow-markers').prop('checked');
-        socket.emit('toggle_allow_markers_server', session_token, doAllowMarkers, function (data) {
-            if(!data.success){
-                throwConsoleError(data);
-            }
+        if (is_host && allow_markers !== doAllowMarkers) {
+            socket.emit('toggle_allow_markers_server', session_token, doAllowMarkers, function (data) {
+                if(!data.success){
+                    throwConsoleError(data);
+                }
+            });
+        }
+
+        // Debug Logging
+        var debug_log_status =  $('#grouptube-debug-log').prop('checked');
+        storageStore('grouptubeDebugLog', debug_log_status, function () {
+            debug_log = debug_log_status;
         });
 
         // Close Settings Menu
         $('#grouptube-settings').remove();
+        debugLog('Save GroupTube Settings...');
     });
 
-    // Help Toast for markers
-    $(document).on('click', '#grouptube-marker-help', function () {
-        addToast(getToastInfoHtml() + ' Allowing this, will let users place markers on the video using right click!', 4000);
+    // Help Toast in Settings Menu
+    $(document).on('click', '[data-help-text]', function () {
+        var text = $(this).attr('data-help-text');
+        addToast(getToastInfoHtml() + ' ' + text, 4000);
     });
 
     // Leave Session
     $(document).on('click', '#grouptube-session-leave', function () {
         leaveSession();
+        debugLog('Leave Session...');
     });
 
     // Change Nickname
@@ -158,6 +174,7 @@ socket.on('connect', () => {
                 user_display_name = nickname;
                 $('#grouptube-nickname-promt').remove();
             });
+            debugLog('Saved Nickname "'+nickname+'"...');
         }else{
             addToast("Please enter a Username!");
         }
@@ -165,7 +182,7 @@ socket.on('connect', () => {
 
     // Debug
     $(document).on('click', '#grouptube-debug-btn', function () {
-
+        debugLog('Pressed Debug Button...');
     });
 
     /**
@@ -174,11 +191,13 @@ socket.on('connect', () => {
     $(document).on('click', '#grouptube-session-start', function () {
         socket.emit('create_session', chrome.runtime, function (data) {
             if(data.success){
+                debugLog('Create Session...');
                 /**
                  * Get token and build URL
                  */
                 session_token = data.token;
                 host = user_display_name;
+                is_host = true;
                 getVideoInviteLink(session_token);
 
                 /**
@@ -196,33 +215,39 @@ socket.on('connect', () => {
                 */
                 var video = $('video');
                 video.on('play', function (e) {
-                    socket.emit('video_play_server', session_token, getVideoTime(), function (data) {
+                    var time = getVideoTime();
+                    socket.emit('video_play_server', session_token, time, function (data) {
                         if(!data.success){
                             throwConsoleError(data);
                         }
                     });
+                    debugLog('Play Video: ' + time);
                 });
 
                 /**
                  * On video pause, send to server
                  */
                 video.on('pause', function (e) {
-                    socket.emit('video_pause_server', session_token, getVideoTime(), function (data) {
+                    var time = getVideoTime();
+                    socket.emit('video_pause_server', session_token, time, function (data) {
                         if(!data.success){
                             throwConsoleError(data);
                         }
                     });
+                    debugLog('Pause Video: ' + time);
                 });
 
                 /**
                  * On video seeked, send to server
                  */
                 video.on('seeked', function() {
-                    socket.emit('video_set_time_server', session_token, getVideoTime(), function (data) {
+                    var time = getVideoTime();
+                    socket.emit('video_set_time_server', session_token, time, function (data) {
                         if(!data.success){
                             throwConsoleError(data);
                         }
                     });
+                    debugLog('Seek in Video: ' + time);
                 });
 
                 /**
@@ -233,6 +258,7 @@ socket.on('connect', () => {
                         'isPlaying': isVideoPlaying(),
                         'time': getVideoTime()
                     };
+                    debugLog('Return Video Properties: ' + data);
                     callback(data);
                 });
 
@@ -240,6 +266,7 @@ socket.on('connect', () => {
                  * Update Session (View-count etc.)
                  */
                 socket.on('update_session',function(data){
+                    debugLog('Update Session: ' + data);
                     updateSession(data);
                 });
 
@@ -247,6 +274,7 @@ socket.on('connect', () => {
                  * On disconnect display overlay
                  */
                 socket.on('disconnect',function(data){
+                    debugLog('Disconnect...');
                     setPlayVideo(false);
                     showVideoOverlayWithText('Connection to GroupTube Server lost!<br><span style="font-size: 15px;">This may be due to connection issues or the server getting updated.</span>');
                 });
@@ -266,8 +294,8 @@ socket.on('connect', () => {
     // Toast Container
     createToastContainer();
 
-    // Fetch Nickname & check for token in URL
-    getNickname(function () {
+    // Fetch Settings from Storage & check for token in URL
+    getSettingsFromStorage(function () {
         /**
          * If opened GroupTube video URL
          */
@@ -284,6 +312,7 @@ socket.on('connect', () => {
                          * Build Page
                          */
                         viewer_list = data.viewer_list;
+                        is_host = false;
                         setHost();
                         setPlayVideo(false);
                         setVideoTime(0);
@@ -291,6 +320,7 @@ socket.on('connect', () => {
                         disableControls();
                         createViewCounter();
                         createPageOverlay();
+                        renderGrouptubeButton(getSettingsButtonHtml());
                         removeRecommendationWrapper();
                         disableAfterLoad();
 
@@ -300,6 +330,7 @@ socket.on('connect', () => {
                         socket.on('video_toggle_play',function(status, time){
                             setPlayVideo(status);
                             setVideoTime(time);
+                            debugLog('Toggle Video play: ' + time);
                         });
 
                         /**
@@ -307,6 +338,7 @@ socket.on('connect', () => {
                          */
                         socket.on('video_set_time_client',function(time){
                             setVideoTime(time);
+                            debugLog('Set Video time: ' + time);
                         });
 
                         /**
@@ -319,6 +351,7 @@ socket.on('connect', () => {
                             if((currentVideoTime > (data.time + 0.5)) || (currentVideoTime < (data.time - 0.5))){
                                 setVideoTime(data.time);
                             }
+                            debugLog('Toggle Video Properties: ' + data);
                         });
 
                         /**
@@ -326,6 +359,7 @@ socket.on('connect', () => {
                          */
                         socket.on('update_session',function(data){
                             updateSession(data);
+                            debugLog('Update Session: ' + data);
                         });
 
                         /**
@@ -339,6 +373,7 @@ socket.on('connect', () => {
                             url = addParametertoURL(url, 't', ((Math.round(getVideoTime()) - 1) >= 0 ? (Math.round(getVideoTime()) - 1): 0));
                             showVideoOverlayWithText("GroupTube Session Owner closed the video!", url);
                             updateViewCounter("");
+                            debugLog('Display Close Overlay: ' + url);
                         });
 
                         /**
@@ -348,6 +383,7 @@ socket.on('connect', () => {
                             updateViewCounter("");
                             setPlayVideo(false);
                             showVideoOverlayWithText('Connection to GroupTube Server lost!<br><span style="font-size: 15px;">This may be due to connection issues or the server getting updated.</span>');
+                            debugLog('Server Disconnect...');
                         });
 
                         /**
@@ -371,6 +407,7 @@ socket.on('connect', () => {
                             if (token) {
                                 setTimeout(function (){
                                     socket.emit('update_current_video_status', token);
+                                    debugLog('Focus Video...');
                                 }, 100);
                             }
                         });
@@ -389,6 +426,7 @@ socket.on('connect', () => {
          */
         socket.on('toggle_allow_markers', function(status, isHost){
             setAllowMarkers(status, false, isHost);
+            debugLog('Toggle Allow Markers: ' + status);
         });
 
         /**
@@ -402,7 +440,7 @@ socket.on('connect', () => {
 
             var posX = (videoWidth * posRelX) + offset.left;
             var posY = (videoHeight * posRelY) + offset.top;
-            
+
             var marker_element = $(getMarkerHtml(name, color)).prependTo('body');
             marker_element.offset({top: posY, left: (posX - marker_element.outerWidth())})
             setTimeout(function(){
@@ -410,6 +448,7 @@ socket.on('connect', () => {
                     marker_element.remove();
                 });
             }, 1000)
+            debugLog('Set Marker: ' + posX + ', ' + posY);
         });
     });
 
@@ -475,7 +514,7 @@ function getNicknameButtonHtml(){
 }
 
 /**
- * Get debug button html
+ * Get invite button html
  */
 function getInviteButtonHtml(){
     return `
@@ -492,7 +531,7 @@ function getInviteButtonHtml(){
  */
 function getSettingsButtonHtml(){
     return `
-    <button id="grouptube-settings-button" class="ytp-subtitles-button ytp-button grouptube-button" aria-label="Grouptube Session Settings" style="text-align: center;" aria-pressed="false" title="Grouptube Session Settings">
+    <button id="grouptube-settings-button" class="ytp-subtitles-button ytp-button grouptube-button" aria-label="Grouptube Settings" style="text-align: center;" aria-pressed="false" title="Grouptube Settings">
         <svg aria-hidden="true" height="100%" width="50%" focusable="false" data-prefix="fas" data-icon="users-cog" class="svg-inline--fa fa-users-cog fa-w-20" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512">
             <path fill="currentColor" d="M610.5 341.3c2.6-14.1 2.6-28.5 0-42.6l25.8-14.9c3-1.7 4.3-5.2 3.3-8.5-6.7-21.6-18.2-41.2-33.2-57.4-2.3-2.5-6-3.1-9-1.4l-25.8 14.9c-10.9-9.3-23.4-16.5-36.9-21.3v-29.8c0-3.4-2.4-6.4-5.7-7.1-22.3-5-45-4.8-66.2 0-3.3.7-5.7 3.7-5.7 7.1v29.8c-13.5 4.8-26 12-36.9 21.3l-25.8-14.9c-2.9-1.7-6.7-1.1-9 1.4-15 16.2-26.5 35.8-33.2 57.4-1 3.3.4 6.8 3.3 8.5l25.8 14.9c-2.6 14.1-2.6 28.5 0 42.6l-25.8 14.9c-3 1.7-4.3 5.2-3.3 8.5 6.7 21.6 18.2 41.1 33.2 57.4 2.3 2.5 6 3.1 9 1.4l25.8-14.9c10.9 9.3 23.4 16.5 36.9 21.3v29.8c0 3.4 2.4 6.4 5.7 7.1 22.3 5 45 4.8 66.2 0 3.3-.7 5.7-3.7 5.7-7.1v-29.8c13.5-4.8 26-12 36.9-21.3l25.8 14.9c2.9 1.7 6.7 1.1 9-1.4 15-16.2 26.5-35.8 33.2-57.4 1-3.3-.4-6.8-3.3-8.5l-25.8-14.9zM496 368.5c-26.8 0-48.5-21.8-48.5-48.5s21.8-48.5 48.5-48.5 48.5 21.8 48.5 48.5-21.7 48.5-48.5 48.5zM96 224c35.3 0 64-28.7 64-64s-28.7-64-64-64-64 28.7-64 64 28.7 64 64 64zm224 32c1.9 0 3.7-.5 5.6-.6 8.3-21.7 20.5-42.1 36.3-59.2 7.4-8 17.9-12.6 28.9-12.6 6.9 0 13.7 1.8 19.6 5.3l7.9 4.6c.8-.5 1.6-.9 2.4-1.4 7-14.6 11.2-30.8 11.2-48 0-61.9-50.1-112-112-112S208 82.1 208 144c0 61.9 50.1 112 112 112zm105.2 194.5c-2.3-1.2-4.6-2.6-6.8-3.9-8.2 4.8-15.3 9.8-27.5 9.8-10.9 0-21.4-4.6-28.9-12.6-18.3-19.8-32.3-43.9-40.2-69.6-10.7-34.5 24.9-49.7 25.8-50.3-.1-2.6-.1-5.2 0-7.8l-7.9-4.6c-3.8-2.2-7-5-9.8-8.1-3.3.2-6.5.6-9.8.6-24.6 0-47.6-6-68.5-16h-8.3C179.6 288 128 339.6 128 403.2V432c0 26.5 21.5 48 48 48h255.4c-3.7-6-6.2-12.8-6.2-20.3v-9.2zM173.1 274.6C161.5 263.1 145.6 256 128 256H64c-35.3 0-64 28.7-64 64v32c0 17.7 14.3 32 32 32h65.9c6.3-47.4 34.9-87.3 75.2-109.4z"></path>
         </svg>
@@ -598,13 +637,16 @@ function setPlayVideo(status){
     }else{
         $('video')[0].pause();
     }
+    debugLog('Set Video play: ' + status);
 }
 
 /**
  * Check if video is currently playing
  */
 function isVideoPlaying() {
-    return !$('video')[0].paused;
+    var isPlaying = !$('video')[0].paused;
+    debugLog('Check Video play: ' + isPlaying);
+    return isPlaying;
 }
 
 /**
@@ -614,6 +656,7 @@ function setVideoTime(time){
     var video = $('video');
     if(time <= (video[0].duration - 0.25)){
         video[0].currentTime = time;
+        debugLog('Set Video Playtime: ' + time);
     }
 }
 
@@ -621,7 +664,9 @@ function setVideoTime(time){
  * Get current video playtime
  */
 function getVideoTime() {
-    return $('video')[0].currentTime;
+    var videoTime = $('video')[0].currentTime;
+    debugLog('Check Video play: ' + videoTime);
+    return videoTime;
 }
 
 /**
@@ -636,6 +681,7 @@ function disableControls() {
     }else{
         addToast(getToastInfoHtml() + 'Video is controlled by GroupTube Session Owner.');
     }
+    debugLog('Disable Video Controls...');
 }
 
 /**
@@ -657,6 +703,7 @@ function setVideoText(text){
             element.remove();
         });
     }, 5000);
+    debugLog('Set Video Text...');
 }
 
 /**
@@ -674,6 +721,7 @@ function setAllowMarkers(status, onJoin, isHost){
                 addToast(getToastInfoHtml() + 'The host disabled Video Markers! You may no longer place markers!', 2000);
             }
         }
+        debugLog('Set Allow Markers: ' + allow_markers);
     }
 }
 
@@ -714,6 +762,7 @@ function showVideoOverlayWithText(text, url = "", urlText = "Want to continue wa
     }else{
         $('#player-container-outer').prepend(html);
     }
+    debugLog('Render Video Overlay: ' + text);
 }
 
 /**
@@ -756,6 +805,7 @@ function addToast(message, timeToLive){
             toast.remove();
         });
     }, timeToLive);
+    debugLog('Add Toast: ' + message);
 }
 
 /**
@@ -1045,14 +1095,23 @@ function leaveSession() {
     window.location.href = url;
 }
 
-function getNickname(callback) {
-    var key = 'grouptubeNickname';
-    storageRetrieve(key, function (data) {
-        if(data[key] === undefined){
+function getSettingsFromStorage(callback) {
+    var key1 = 'grouptubeNickname';
+    var key2 = 'grouptubeDebugLog';
+    storageRetrieve([key1, key2], function (data) {
+        // Nickname
+        if(data[key1] === undefined){
             renderNicknamePromt();
         }else{
-            user_display_name = data[key];
+            user_display_name = data[key1];
         }
+        // DebugLog
+        if(data[key2] === undefined){
+            storageStore(key2, false, () => {});
+        }else{
+            debug_log = data[key2];
+        }
+        // Render Nickname Button
         $(document).ready(function(){
             renderGrouptubeButton(getNicknameButtonHtml());
         });
@@ -1081,22 +1140,40 @@ function renderSettingsPromt() {
                 <div id="grouptube-settings-body" style="position: absolute;top: 50%;left: 50%;transform: translate(-50%, -50%);width: 30rem;height: 25rem;display: flex;flex-direction: column;align-items: center;justify-content: space-evenly;text-align: center;background: #2d2e31;border-radius: 4px;box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.28);padding: 0 24px;color: white;">
                     <h1>GroupTube Settings</h1>
                     
-                    <div style="font-size: 14px;">
+                    <div style="font-size: 14px;`+(!is_host ? 'display:none;' : '')+`">
                         <div style="display: block;">
                             <label for="grouptube-allow-markers">
                                 <input id="grouptube-allow-markers" type="checkbox" style="position: relative;vertical-align: middle;bottom: 1px;" `+(allow_markers ? 'checked' : '')+`>
                                 Video Markers
                             </label>
-                            <svg id="grouptube-marker-help" height="12" width="12" style="cursor: pointer;" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="question-circle" class="svg-inline--fa fa-question-circle fa-w-16" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path fill="currentColor" d="M504 256c0 136.997-111.043 248-248 248S8 392.997 8 256C8 119.083 119.043 8 256 8s248 111.083 248 248zM262.655 90c-54.497 0-89.255 22.957-116.549 63.758-3.536 5.286-2.353 12.415 2.715 16.258l34.699 26.31c5.205 3.947 12.621 3.008 16.665-2.122 17.864-22.658 30.113-35.797 57.303-35.797 20.429 0 45.698 13.148 45.698 32.958 0 14.976-12.363 22.667-32.534 33.976C247.128 238.528 216 254.941 216 296v4c0 6.627 5.373 12 12 12h56c6.627 0 12-5.373 12-12v-1.333c0-28.462 83.186-29.647 83.186-106.667 0-58.002-60.165-102-116.531-102zM256 338c-25.365 0-46 20.635-46 46 0 25.364 20.635 46 46 46s46-20.636 46-46c0-25.365-20.635-46-46-46z"></path></svg>
+                            <svg data-help-text="Allowing this will let users place markers on the video using right click. Only the host can activate this." height="12" width="12" style="cursor: pointer;" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="question-circle" class="svg-inline--fa fa-question-circle fa-w-16" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path fill="currentColor" d="M504 256c0 136.997-111.043 248-248 248S8 392.997 8 256C8 119.083 119.043 8 256 8s248 111.083 248 248zM262.655 90c-54.497 0-89.255 22.957-116.549 63.758-3.536 5.286-2.353 12.415 2.715 16.258l34.699 26.31c5.205 3.947 12.621 3.008 16.665-2.122 17.864-22.658 30.113-35.797 57.303-35.797 20.429 0 45.698 13.148 45.698 32.958 0 14.976-12.363 22.667-32.534 33.976C247.128 238.528 216 254.941 216 296v4c0 6.627 5.373 12 12 12h56c6.627 0 12-5.373 12-12v-1.333c0-28.462 83.186-29.647 83.186-106.667 0-58.002-60.165-102-116.531-102zM256 338c-25.365 0-46 20.635-46 46 0 25.364 20.635 46 46 46s46-20.636 46-46c0-25.365-20.635-46-46-46z"></path></svg>
                         </div>
                         <small style="font-size: 12px;">Allow joined users to place markers on the video.</small>
-                      </div>
+                    </div>
+                    
+                    <div style="font-size: 14px;">
+                        <div style="display: block;">
+                            <label for="grouptube-debug-log">
+                                <input id="grouptube-debug-log" type="checkbox" style="position: relative;vertical-align: middle;bottom: 1px;" `+(debug_log ? 'checked' : '')+`>
+                                Debug Logs
+                            </label>
+                            <svg data-help-text="Activating this will print various debug messages to the Developer Console of your Browser. This setting will be saved for all future sessions." height="12" width="12" style="cursor: pointer;" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="question-circle" class="svg-inline--fa fa-question-circle fa-w-16" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path fill="currentColor" d="M504 256c0 136.997-111.043 248-248 248S8 392.997 8 256C8 119.083 119.043 8 256 8s248 111.083 248 248zM262.655 90c-54.497 0-89.255 22.957-116.549 63.758-3.536 5.286-2.353 12.415 2.715 16.258l34.699 26.31c5.205 3.947 12.621 3.008 16.665-2.122 17.864-22.658 30.113-35.797 57.303-35.797 20.429 0 45.698 13.148 45.698 32.958 0 14.976-12.363 22.667-32.534 33.976C247.128 238.528 216 254.941 216 296v4c0 6.627 5.373 12 12 12h56c6.627 0 12-5.373 12-12v-1.333c0-28.462 83.186-29.647 83.186-106.667 0-58.002-60.165-102-116.531-102zM256 338c-25.365 0-46 20.635-46 46 0 25.364 20.635 46 46 46s46-20.636 46-46c0-25.365-20.635-46-46-46z"></path></svg>
+                        </div>
+                        <small style="font-size: 12px;">Print various debug logs to the console.</small>
+                    </div>
 
                     <button id="grouptube-settings-save" style="background-color: #cc0000;padding: 10px 16px;border-radius: 2px;border: none;color: white;font-weight: bold;text-transform: uppercase;font-family: 'Roboto', 'Noto', sans-serif;font-size: 13px;cursor: pointer;">Save</button>
                 </div>
             </div>
         `);
     });
+}
+
+function debugLog(message) {
+    if (debug_log) {
+        var messageString = '%c' + message
+        console.log('%c[GroupTube] '+messageString, 'color: #b93232', 'color: #ccc')
+    }
 }
 
 function getRandomMarkerColor() {
@@ -1115,6 +1192,12 @@ function storageStore(key, data, callback) {
 function storageRetrieve(key, callback) {
     chrome.storage.sync.get(key, function (data) {
         callback(data);
+    });
+}
+
+function storageRemove(key, callback){
+    chrome.storage.sync.remove(key, function () {
+        callback();
     });
 }
 

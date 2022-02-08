@@ -47,7 +47,7 @@ socket.on('connect', () => {
 
     // YT Page Updates
     $(document).on('yt-page-data-updated', function () {
-        if (isOnVideoPage()) {
+        if (isOnVideoPage() && !session_token) {
             renderCreateSessionButton();
             renderTooltip();
         }

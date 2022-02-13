@@ -665,6 +665,12 @@ function setVideoTime(time){
  */
 function getVideoTime() {
     var videoTime = $('video')[0].currentTime;
+    if (!videoTime) {
+        videoTime = $('video').currentTime
+    }
+    if (!videoTime) {
+        videoTime = $('ytd-watch-flexy video').currentTime
+    }
     debugLog('Check Video play: ' + videoTime);
     return videoTime;
 }

@@ -313,8 +313,10 @@ socket.on('connect', () => {
                          */
                         viewer_list = data.viewer_list;
                         is_host = false;
+                        console.log(data)
+                        console.log(isVideoPlaying())
                         setHost();
-                        setPlayVideo(false);
+                        // setPlayVideo(false);
                         setVideoTime(0);
                         setAllowMarkers(data.allow_markers, true);
                         disableControls();
@@ -323,6 +325,18 @@ socket.on('connect', () => {
                         renderGrouptubeButton(getSettingsButtonHtml());
                         removeRecommendationWrapper();
                         disableAfterLoad();
+                        
+                        /**
+                         * Initially pause the video
+                         */
+                        let video = $('video')[0];
+                        let loadInterval = setInterval(() => {
+                            if (video.paused !== undefined) {
+                                setPlayVideo(false);
+                                clearInterval(loadInterval);
+                                socket.emit('update_current_video_status', token);
+                            }
+                        }, 500);
 
                         /**
                          * On Toggle video play
@@ -632,10 +646,11 @@ function getMarkerHtml(name, color) {
  * Play/pause video
  */
 function setPlayVideo(status){
+    var video = $('video')[0];
     if(status){
-        $('video')[0].play();
+        video.play();
     }else{
-        $('video')[0].pause();
+        video.pause();
     }
     debugLog('Set Video play: ' + status);
 }

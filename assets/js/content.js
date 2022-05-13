@@ -180,6 +180,11 @@ socket.on('connect', () => {
         }
     });
 
+    // Close Nickname Promt
+    $(document).on('click', '#grouptube-nickname-promt-close', function () {
+        $('#grouptube-nickname-promt').remove();
+    });
+
     // Debug
     $(document).on('click', '#grouptube-debug-btn', function () {
         debugLog('Pressed Debug Button...');
@@ -1145,6 +1150,11 @@ function renderNicknamePromt(){
         $('body').prepend(`
             <div id="grouptube-nickname-promt" style="position: fixed;top: 0;left: 0;width: 100%;height: 100%;z-index: 1100000;background-color: rgba(0,0,0,0.8);">
                 <div id="grouptube-nickname-promt-body" style="position: absolute;top: 50%;left: 50%;transform: translate(-50%, -50%);width: 25rem;height: 20rem;display: flex;flex-direction: column;align-items: center;justify-content: space-evenly;text-align: center;background: #2d2e31;border-radius: 4px;box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.28);padding: 0 24px;color: white;">
+                    <span id="grouptube-nickname-promt-close" title="Close this Prompt" style="position: fixed;z-index: 2000000;top: 10px;right: 4px;color: white;width: 24px;padding: 0;margin: 0;cursor: pointer;">
+                        <svg height="100%" width="60%" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="times" class="svg-inline--fa fa-times fa-w-11" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 352 512">
+                            <path fill="currentColor" d="M242.72 256l100.07-100.07c12.28-12.28 12.28-32.19 0-44.48l-22.24-22.24c-12.28-12.28-32.19-12.28-44.48 0L176 189.28 75.93 89.21c-12.28-12.28-32.19-12.28-44.48 0L9.21 111.45c-12.28 12.28-12.28 32.19 0 44.48L109.28 256 9.21 356.07c-12.28 12.28-12.28 32.19 0 44.48l22.24 22.24c12.28 12.28 32.2 12.28 44.48 0L176 322.72l100.07 100.07c12.28 12.28 32.2 12.28 44.48 0l22.24-22.24c12.28-12.28 12.28-32.19 0-44.48L242.72 256z"></path>
+                        </svg>
+                    </span>
                     <h1>GroupTube Nickname</h1>
                     <input type="text" placeholder="Enter a Nickname.." id="grouptube-nickname-input" style="height: 25px;border-radius: 5px;border: none;outline: none;display: block;box-shadow: 0 0 10px 0 black;padding: 0 10px;"><small style="font-size: 11px;">Your Nickname is used to tell other People who joined their session.</small>
                     <button id="grouptube-nickname-promt-save" style="background-color: #cc0000;padding: 10px 16px;border-radius: 2px;border: none;color: white;font-weight: bold;text-transform: uppercase;font-family: 'Roboto', 'Noto', sans-serif;font-size: 13px;cursor: pointer;">Save</button>

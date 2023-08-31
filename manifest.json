@@ -1,11 +1,11 @@
 {
     "name": "GroupTube - Watch YouTube videos together!",
     "short_name": "GroupTube",
-    "version": "3.2",
+    "version": "3.3",
     "description": "Watch YouTube videos together, completely in sync and easy to manage.",
     "author": "Lasse Jacobsen & Mahmut Tunctuerk",
     "homepage_url": "https://grouptube.de/",
-    "minimum_chrome_version": "66",
+    "minimum_chrome_version": "88",
     "permissions": ["storage"],
     "offline_enabled": false,
     "icons": {
@@ -21,5 +21,5 @@
             "matches": ["*://*.youtube.com/*"]
         }
     ],
-    "manifest_version": 2
+    "manifest_version": 3
 }

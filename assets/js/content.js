@@ -318,8 +318,6 @@ socket.on('connect', () => {
                          */
                         viewer_list = data.viewer_list;
                         is_host = false;
-                        console.log(data)
-                        console.log(isVideoPlaying())
                         setHost();
                         // setPlayVideo(false);
                         setVideoTime(0);
@@ -1095,7 +1093,7 @@ function displayTooltip(tooltip, element){
  */
 function renderCreateSessionButton() {
     $(document).ready(function(){
-        if(!isLiveStream() && $('#grouptube-session-start').length === 0){
+        if(!isLiveStream()){
             renderGrouptubeButton(getCreateSessionButtonHtml());
         }
     });
@@ -1105,7 +1103,11 @@ function renderCreateSessionButton() {
  * Render a default button in the controls pane with the given html
  */
 function renderGrouptubeButton(html) {
-    $('.ytp-right-controls').prepend(html);
+    const buttonId = html.match(/id="([^"]+)"/)[1]
+
+    if ($(`#${buttonId}`).length === 0) {
+        $('.ytp-right-controls').prepend(html);
+    }
 }
 
 /**
